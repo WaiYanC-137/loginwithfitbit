@@ -6,8 +6,16 @@ class FitbitService {
   static const _clientId = '23QK4J';
   static const _clientSecret = 'ea6c9f286ccd9d6c8b7a377f3e1f772d';
   static const _redirectUri = 'com.example.loginwithfitbit://fitbit/callback';
-
+  static const List<String> scopes = [
+    'activity',
+    'heartrate',
+    'nutrition',
+    'profile',
+    'sleep',
+    'weight'
+  ];
   String? accessToken;
+  final String encodedScopes = scopes.join('%20'); // Space-separated scopes
 
   Uri getAuthUri() {
     return Uri.parse(
@@ -15,7 +23,7 @@ class FitbitService {
           '?response_type=code'
           '&client_id=$_clientId'
           '&redirect_uri=$_redirectUri'
-          '&scope=profile%20activity'
+          '&scope=$encodedScopes'
           '&expires_in=604800',
     );
   }
