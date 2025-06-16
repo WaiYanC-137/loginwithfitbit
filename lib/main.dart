@@ -41,7 +41,7 @@ class _MyAppState extends State<MyApp> {
           '?response_type=code'
           '&client_id=$clientId'
           '&redirect_uri=$redirectUri'
-          '&scope=profile'
+          '&scope=profile%20activity'
           '&expires_in=604800',
     );
     if (await canLaunchUrl(authUri)) {
@@ -102,27 +102,90 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  Future<void> _addFavoriteActivity(int activityId) async {
+    if (_accessToken == null) return;
+
+    final response = await http.post(
+      Uri.parse('https://api.fitbit.com/1/user/-/activities/favorite/$activityId.json'),
+      headers: {
+        'Authorization': 'Bearer $_accessToken',
+      },
+    );
+
+    if (response.statusCode == 204 || response.statusCode == 201) {
+      setState(() {
+        _statusMessage = 'Activity $activityId added to favorites.';
+      });
+      print('Favorite activity added. Status: ${response.statusCode}');
+    } else {
+      setState(() => _statusMessage = 'Failed to add favorite.');
+      print('Add favorite failed: ${response.statusCode}, ${response.body}');
+    }
+  }
+
+  Future<void> _getFavoriteActivities() async {
+    if (_accessToken == null) return;
+
+    final response = await http.get(
+      Uri.parse('https://api.fitbit.com/1/user/-/activities/favorite.json'),
+      headers: {
+        'Authorization': 'Bearer $_accessToken',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      try {
+        final List<dynamic> favorites = jsonDecode(response.body);
+
+        setState(() {
+          _statusMessage = 'Favorites: ' +
+              favorites.map((f) => f['name'] ?? 'Unnamed').join(', ');
+        });
+
+        print('Favorites: $favorites');
+      } catch (e) {
+        setState(() => _statusMessage = 'Error decoding favorites');
+        print('JSON decode error: $e');
+      }
+    } else {
+      setState(() => _statusMessage = 'Failed to get favorites.');
+      print('Get favorites failed: ${response.statusCode}, ${response.body}');
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(title: Text('Fitbit Profile')),
+        appBar: AppBar(title: Text('Fitbit API Demo')),
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(_statusMessage ?? ''),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _loginWithFitbit,
-                child: Text('Login with Fitbit'),
-              ),
-              if (_accessToken != null)
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(_statusMessage ?? '', textAlign: TextAlign.center),
+                SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: _getProfile,
-                  child: Text('Get Profile Info'),
+                  onPressed: _loginWithFitbit,
+                  child: Text('Login with Fitbit'),
                 ),
-            ],
+                if (_accessToken != null) ...[
+                  ElevatedButton(
+                    onPressed: _getProfile,
+                    child: Text('Get Profile Info'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => _addFavoriteActivity(90009), // Running
+                    child: Text('Add Running to Favorites'),
+                  ),
+                  ElevatedButton(
+                    onPressed: _getFavoriteActivities,
+                    child: Text('View Favorite Activities'),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
