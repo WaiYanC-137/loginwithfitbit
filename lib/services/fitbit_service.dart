@@ -1,4 +1,3 @@
-// lib/services/fitbit_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -83,22 +82,58 @@ class FitbitService {
     return response.statusCode == 204 || response.statusCode == 201;
   }
 
-  Future<List<String>> getFavoriteActivities() async {
+  Future<List<Map<String, dynamic>>> getAllActivities() async {
     if (accessToken == null) return [];
 
     final response = await http.get(
-      Uri.parse('https://api.fitbit.com/1/user/-/activities/favorite.json'),
+      Uri.parse('https://api.fitbit.com/1/activities.json'),
       headers: {
         'Authorization': 'Bearer $accessToken',
       },
     );
 
     if (response.statusCode == 200) {
-      final List<dynamic> favorites = jsonDecode(response.body);
-      return favorites.map((f) => f['name'] ?? 'Unnamed').cast<String>().toList();
+      final data = jsonDecode(response.body);
+
+      // Check if the categories key exists and contains activities
+      if (data['categories'] != null && data['categories'] is List) {
+        List<Map<String, dynamic>> activities = [];
+
+        // Iterate through categories and extract activities
+        for (var category in data['categories']) {
+          if (category['activities'] != null && category['activities'] is List) {
+            activities.addAll(List<Map<String, dynamic>>.from(category['activities']));
+          }
+        }
+
+        if (activities.isNotEmpty) {
+          print('Fetched ${activities.length} activities');
+          return activities;
+        } else {
+          print('No activities found in categories');
+          return [];
+        }
+      } else {
+        print('No "categories" key or not a list: $data');
+        return [];
+      }
     }
 
-    print('Favorites error: ${response.body}');
+    print('Activities error: ${response.body}');
     return [];
   }
+  Future<bool> removeFavoriteActivity(int activityId) async {
+    if (accessToken == null) return false;
+
+    final response = await http.delete(
+      Uri.parse('https://api.fitbit.com/1/user/-/activities/favorite/$activityId.json'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+      },
+    );
+
+    return response.statusCode == 204 || response.statusCode == 201;
+  }
+
+
 }

@@ -1,7 +1,7 @@
-// lib/ui/home_page.dart
 import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
 import '../services/fitbit_service.dart';
+import 'profile_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -47,33 +47,20 @@ class _HomePageState extends State<HomePage> {
               ElevatedButton(
                 onPressed: () async {
                   final user = await _fitbitService.getProfile();
-                  setState(() {
-                    _status = user != null
-                        ? 'Profile: ${user['fullName']} (${user['age']} y/o)'
-                        : 'Failed to get profile';
-                  });
+                  if (user != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProfilePage(fitbitService: _fitbitService),
+                      ),
+                    );
+                  } else {
+                    setState(() {
+                      _status = 'Failed to get profile';
+                    });
+                  }
                 },
                 child: const Text('Get Profile Info'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  final success = await _fitbitService.addFavoriteActivity(90009);
-                  setState(() {
-                    _status = success ? 'Added Running to Favorites' : 'Failed to add favorite';
-                  });
-                },
-                child: const Text('Add Running to Favorites'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  final favorites = await _fitbitService.getFavoriteActivities();
-                  setState(() {
-                    _status = favorites.isNotEmpty
-                        ? 'Favorites: ${favorites.join(', ')}'
-                        : 'No favorites found';
-                  });
-                },
-                child: const Text('View Favorite Activities'),
               ),
             ],
           ),
