@@ -14,8 +14,9 @@ class FitbitService {
     'sleep',
     'weight'
   ];
+
   String? accessToken;
-  final String encodedScopes = scopes.join('%20'); // Space-separated scopes
+  final String encodedScopes = scopes.join('%20');
 
   Uri getAuthUri() {
     return Uri.parse(
@@ -56,6 +57,7 @@ class FitbitService {
       accessToken = data['access_token'];
       return true;
     }
+
     print('Auth failed: ${response.body}');
     return false;
   }
@@ -73,8 +75,66 @@ class FitbitService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body)['user'];
     }
+
     print('Profile error: ${response.body}');
     return null;
+  }
+
+  Future<List<Map<String, dynamic>>> getAllActivities() async {
+    if (accessToken == null) return [];
+
+    final response = await http.get(
+      Uri.parse('https://api.fitbit.com/1/activities.json'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      List<Map<String, dynamic>> activities = [];
+
+      if (data['categories'] != null && data['categories'] is List) {
+        for (var category in data['categories']) {
+          if (category['activities'] != null && category['activities'] is List) {
+            activities.addAll(List<Map<String, dynamic>>.from(category['activities']));
+          }
+        }
+      }
+
+      print('Fetched ${activities.length} activities');
+      return activities;
+    }
+
+    print('Activities error: ${response.body}');
+    return [];
+  }
+
+  Future<List<int>> getFavoriteActivityIds() async {
+    if (accessToken == null) return [];
+
+    final response = await http.get(
+      Uri.parse('https://api.fitbit.com/1/user/-/activities/favorite.json'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+
+      print("Favorite raw data: $data");
+
+      return data.map<int>((item) {
+        final id = item['activityId'];
+        if (id is int) return id;
+        if (id is String) return int.tryParse(id) ?? -1;
+        return -1;
+      }).where((id) => id != -1).toList();
+    }
+
+    print('Favorite activities error: ${response.body}');
+    return [];
   }
 
   Future<bool> addFavoriteActivity(int activityId) async {
@@ -90,46 +150,6 @@ class FitbitService {
     return response.statusCode == 204 || response.statusCode == 201;
   }
 
-  Future<List<Map<String, dynamic>>> getAllActivities() async {
-    if (accessToken == null) return [];
-
-    final response = await http.get(
-      Uri.parse('https://api.fitbit.com/1/activities.json'),
-      headers: {
-        'Authorization': 'Bearer $accessToken',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-
-      // Check if the categories key exists and contains activities
-      if (data['categories'] != null && data['categories'] is List) {
-        List<Map<String, dynamic>> activities = [];
-
-        // Iterate through categories and extract activities
-        for (var category in data['categories']) {
-          if (category['activities'] != null && category['activities'] is List) {
-            activities.addAll(List<Map<String, dynamic>>.from(category['activities']));
-          }
-        }
-
-        if (activities.isNotEmpty) {
-          print('Fetched ${activities.length} activities');
-          return activities;
-        } else {
-          print('No activities found in categories');
-          return [];
-        }
-      } else {
-        print('No "categories" key or not a list: $data');
-        return [];
-      }
-    }
-
-    print('Activities error: ${response.body}');
-    return [];
-  }
   Future<bool> removeFavoriteActivity(int activityId) async {
     if (accessToken == null) return false;
 
@@ -143,5 +163,9 @@ class FitbitService {
     return response.statusCode == 204 || response.statusCode == 201;
   }
 
-
+  Future<bool> toggleFavoriteActivity(int activityId, bool isFavorite) async {
+    return isFavorite
+        ? await removeFavoriteActivity(activityId)
+        : await addFavoriteActivity(activityId);
+  }
 }

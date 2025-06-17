@@ -47,7 +47,6 @@ class _ProfilePageState extends State<ProfilePage> {
       context,
       MaterialPageRoute(
         builder: (context) => ActivitySelectionPage(
-          activities: activities,
           fitbitService: widget.fitbitService,
         ),
       ),
