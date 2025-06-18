@@ -1,11 +1,16 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:loginwithfitbit/model/activity.dart';
+import 'package:loginwithfitbit/services/fitbit_service.dart';
 
 class CreateActivityLog extends StatefulWidget {
-
-final String accessToken;
-CreateActivityLog({required this.accessToken,super.key});
+  
+  final FitbitService fitbitService;
+  final Activity? selectedActivity;
+  const CreateActivityLog({
+    super.key,
+    required this.fitbitService,
+    this.selectedActivity,
+  });
 
   @override
   _CreateActivityLogState createState() => _CreateActivityLogState();
@@ -20,36 +25,18 @@ class _CreateActivityLogState extends State<CreateActivityLog> {
   final TextEditingController dateController = TextEditingController();
   final TextEditingController distanceController = TextEditingController();
   final TextEditingController distanceUnitController = TextEditingController();
+  late Future<List<Activity>> _createActivitiesLog;
 
-  Future<void> updateProfile() async {
-    print("Create Activity Log...");
-  final response = await http.post(
-      Uri.parse('https://api.fitbit.com/1/user/-/activities.json'),
-      headers: {
-        'Authorization': 'Bearer ${widget.accessToken}',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: {
-        'activityId': activityController.text,
-        'manualCalories': manualCaloriesController.text,
-        'startTime':startTimeController.text,
-        'durationMillis':durationsController.text,
-        'date':dateController.text,
-        'distance':distanceController.text,
-        'distanceUnit':distanceUnitController.text
-      },
-    );
-    print("Token......");
-    print(widget.accessToken);
-    if (response.statusCode == 200) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("✅ Activity Create successfully!")));
-      Navigator.pop(context);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Failed to update: ${response.body}")));
-      print("########");
-      print(response.body);
 
-    }
+  @override
+  void initState() {
+    super.initState();
+
+  }
+
+  Future<List<Activity>> _insertActivitiesLog() async {
+   return _createActivitiesLog = widget.fitbitService.createActivityLog(activityId: activityController.text, manualCalories: manualCaloriesController.text, startTime: startTimeController.text, durationMillis: durationsController.text, date: dateController.text, distance: distanceController.text, distanceUnit: distanceUnitController.text) as Future<List<Activity>>;
+   
   }
 
   @override
@@ -63,8 +50,8 @@ class _CreateActivityLogState extends State<CreateActivityLog> {
         child: Column(
           children: [
             TextField(
-              controller: activityController,
-              decoration: InputDecoration(labelText: 'ActivityID'),
+              controller: TextEditingController(text: widget.selectedActivity?.name),
+              decoration: InputDecoration(labelText: 'ActivityName'),
             ),
             TextField(
               controller: manualCaloriesController,
@@ -96,7 +83,7 @@ class _CreateActivityLogState extends State<CreateActivityLog> {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: updateProfile,
+              onPressed: _insertActivitiesLog,
               child: Text('Create Activity Log'),
             ),
           ],

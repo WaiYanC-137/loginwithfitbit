@@ -8,7 +8,6 @@ class GetActivityLog extends StatefulWidget {
 
   // Constructor requires an accessToken to authenticate with Fitbit API
   GetActivityLog({required this.accessToken, super.key});
-
   @override
   _GetActivityLogState createState() => _GetActivityLogState();
 }

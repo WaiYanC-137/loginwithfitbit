@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:loginwithfitbit/ui/activities/activity_selection_type.dart';
+import 'package:loginwithfitbit/ui/add_entry_bottom_sheet.dart';
 import '../services/fitbit_service.dart';
 import 'activity_selection_page.dart';
 
@@ -59,6 +61,59 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  // Method to show the custom bottom sheet
+  void _showAddEntryBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // Important for content that might exceed screen height
+      builder: (BuildContext context) {
+        return AddEntryBottomSheet(
+          onActivityCardTap: () {
+            // Navigate to ActivityFormPage
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) =>  ActivityListScreen(fitbitService: widget.fitbitService)),
+            ).then((result) {
+              // This .then() block executes when ActivityFormPage is popped
+              if (result == true) {
+                setState(() {
+                  _status = 'Activity logged successfully!';
+                });
+              } else {
+                setState(() {
+                  _status = 'Activity logging cancelled.';
+                });
+              }
+            });
+          },
+          onFoodCardTap: () {
+            // TODO: Implement navigation or dialog for Food entry
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Food card tapped! (Not implemented yet)')),
+            );
+          },
+          onWaterCardTap: () {
+            // TODO: Implement navigation or dialog for Water entry
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Water card tapped! (Not implemented yet)')),
+            );
+          },
+          onWeightCardTap: () {
+            // TODO: Implement navigation or dialog for Weight entry
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Weight card tapped! (Not implemented yet)')),
+            );
+          },
+          onSleepCardTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Weight card tapped! (Not implemented yet)')),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -87,6 +142,11 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed:  _showAddEntryBottomSheet,
+        tooltip: 'Add Favorite Activity',
+        child: const Icon(Icons.add),
+    ),
     );
   }
 }

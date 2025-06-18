@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:loginwithfitbit/model/activity.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class FitbitService {
@@ -55,6 +56,8 @@ class FitbitService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       accessToken = data['access_token'];
+      print("Token Access");
+      print(accessToken);
       return true;
     }
 
@@ -168,4 +171,75 @@ class FitbitService {
         ? await removeFavoriteActivity(activityId)
         : await addFavoriteActivity(activityId);
   }
+  //Get Recent Activity Types Api
+  Future<List<Activity>> getRecentActivitiesTypes() async {
+    if (accessToken == null) return [];
+    final response = await http.get(
+      Uri.parse('https://api.fitbit.com/1/user/-/activities/recent.json'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+      },
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((item) => Activity.fromJson(item)).toList();
+    }
+    print('Activities error: ${response.body}');
+   return [];
+  }
+
+  //Get Frequent Activity Api
+  Future<List<Activity>> getFrequentActivitiesTypes() async {
+  if (accessToken == null) return [];
+  final response = await http.get(
+    Uri.parse('https://api.fitbit.com/1/user/-/activities/frequent.json'),
+    headers: {
+      'Authorization': 'Bearer $accessToken',
+    },
+  );
+  if (response.statusCode == 200) {
+    final List<dynamic> data = jsonDecode(response.body);
+    return data.map((item) => Activity.fromJson(item)).toList();
+  }
+  print('Activities error: ${response.body}');
+  return [];
+}
+
+Future<List<Activity>> createActivityLog({
+    required String activityId,
+    required String manualCalories,
+    required String startTime,        // HH:mm format
+    required String durationMillis,   // e.g. 600000
+    required String date,             // yyyy-MM-dd
+    required String distance,
+    required String distanceUnit,     // "Kilometer" / "Mile"
+  }) async {   
+    
+    print("Create Activity Log...");
+  final response = await http.post(
+      Uri.parse('https://api.fitbit.com/1/user/-/activities.json'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: {
+        'activityId': activityId,
+        'manualCalories': manualCalories,
+        'startTime':startTime,
+        'durationMillis':durationMillis,
+        'date':date,
+        'distance':distance,
+        'distanceUnit':distanceUnit
+      },
+    );
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return jsonDecode(response.body) as Future<List<Activity>>;
+    }
+
+    throw Exception(
+        'Failed (${response.statusCode}): ${response.body}');
+  
+  }
+
+
 }
