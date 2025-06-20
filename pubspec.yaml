@@ -33,6 +33,7 @@ dependencies:
   http: ^0.13.6
   url_launcher: ^6.2.5
   app_links: ^4.0.0
+  shared_preferences: ^2.0.15 # or latest
 
 
 

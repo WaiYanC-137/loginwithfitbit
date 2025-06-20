@@ -3,6 +3,7 @@ import 'package:loginwithfitbit/ui/activities/activity_selection_type.dart';
 import 'package:loginwithfitbit/ui/add_entry_bottom_sheet.dart';
 import '../services/fitbit_service.dart';
 import 'activity_selection_page.dart';
+import 'package:loginwithfitbit/ui/food/food_entry_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final FitbitService fitbitService;
@@ -87,11 +88,12 @@ class _ProfilePageState extends State<ProfilePage> {
             });
           },
           onFoodCardTap: () {
-            // TODO: Implement navigation or dialog for Food entry
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Food card tapped! (Not implemented yet)')),
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const FoodEntryPage()),
             );
           },
+
           onWaterCardTap: () {
             // TODO: Implement navigation or dialog for Water entry
             ScaffoldMessenger.of(context).showSnackBar(

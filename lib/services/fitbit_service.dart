@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:loginwithfitbit/model/activity.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FitbitService {
   static const _clientId = '23QK4J';
@@ -56,6 +57,11 @@ class FitbitService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       accessToken = data['access_token'];
+
+      // Save token
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('fitbitAccessToken', accessToken!);
+
       print("Token Access");
       print(accessToken);
       return true;
@@ -64,6 +70,7 @@ class FitbitService {
     print('Auth failed: ${response.body}');
     return false;
   }
+
 
   Future<Map<String, dynamic>?> getProfile() async {
     if (accessToken == null) return null;
@@ -204,6 +211,42 @@ class FitbitService {
   print('Activities error: ${response.body}');
   return [];
 }
+  Future<List<Map<String, dynamic>>> getRecentFoodLogs() async {
+    if (accessToken == null) return [];
+
+    final response = await http.get(
+      Uri.parse('https://api.fitbit.com/1/user/-/foods/log/recent.json'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data);
+    }
+
+    print('Recent foods error: ${response.body}');
+    return [];
+  }
+  Future<List<Map<String, dynamic>>> getFrequentFoodLogs() async {
+    if (accessToken == null) return [];
+
+    final response = await http.get(
+      Uri.parse('https://api.fitbit.com/1/user/-/foods/log/frequent.json'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data);
+    }
+
+    print('Frequent foods error: ${response.body}');
+    return [];
+  }
 
 Future<List<Activity>> createActivityLog({
     required String activityId,
@@ -213,8 +256,8 @@ Future<List<Activity>> createActivityLog({
     required String date,             // yyyy-MM-dd
     required String distance,
     required String distanceUnit,     // "Kilometer" / "Mile"
-  }) async {   
-    
+  }) async {
+
     print("Create Activity Log...");
   final response = await http.post(
       Uri.parse('https://api.fitbit.com/1/user/-/activities.json'),
@@ -238,8 +281,111 @@ Future<List<Activity>> createActivityLog({
 
     throw Exception(
         'Failed (${response.statusCode}): ${response.body}');
-  
+
   }
+// SharedPreferences Key
+  static const String _customFoodIdsKey = 'custom_food_ids';
+
+  /// Save foodId to SharedPreferences
+  Future<void> _saveCustomFoodId(int foodId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final ids = prefs.getStringList(_customFoodIdsKey) ?? [];
+    if (!ids.contains(foodId.toString())) {
+      ids.add(foodId.toString());
+      await prefs.setStringList(_customFoodIdsKey, ids);
+    }
+  }
+
+  /// Load all saved foodIds from SharedPreferences
+  Future<List<int>> _loadCustomFoodIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ids = prefs.getStringList(_customFoodIdsKey) ?? [];
+    return ids.map((e) => int.tryParse(e) ?? -1).where((id) => id != -1).toList();
+  }
+
+  /// Create custom food and store its foodId
+  Future<bool> createCustomFood({
+    required String name,
+    required String description,
+    required String calories,
+    String defaultServingSize = '1',
+    String defaultFoodMeasurementUnitId = '304',
+    String formType = 'DRY',
+  }) async {
+    if (accessToken == null) {
+      print('Access token is null!');
+      return false;
+    }
+
+    final response = await http.post(
+      Uri.parse('https://api.fitbit.com/1/user/-/foods.json'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: {
+        'name': name,
+        'defaultFoodMeasurementUnitId': defaultFoodMeasurementUnitId,
+        'defaultServingSize': defaultServingSize,
+        'calories': calories,
+        'formType': formType,
+        'description': description,
+      },
+    );
+
+    print('Create food response: ${response.statusCode} - ${response.body}');
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final foodId = data['food']['foodId'];
+      print('New food ID: $foodId');
+
+      if (foodId != null) {
+        await _saveCustomFoodId(foodId);
+      }
+      return true;
+    }
+
+    return false;
+  }
+
+
+
+  /// Fetch custom foods using stored foodIds
+  Future<List<Map<String, String>>> getCustomFoods() async {
+    if (accessToken == null) return [];
+
+    final ids = await _loadCustomFoodIds();
+    List<Map<String, String>> foods = [];
+
+    for (final id in ids) {
+      final response = await http.get(
+        Uri.parse('https://api.fitbit.com/1/foods/$id.json'),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body)['food'];
+        foods.add({
+          'name': data['name'] ?? 'Unknown',
+          'description': data['description'] ?? '',
+        });
+      } else {
+        print("Failed to fetch foodId $id: ${response.body}");
+      }
+    }
+
+    return foods;
+  }
+// Token persistence
+  Future<void> loadAccessToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    accessToken = prefs.getString('fitbitAccessToken');
+  }
+
 
 
 }
