@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:loginwithfitbit/model/activity.dart';
 import 'package:loginwithfitbit/ui/activities/activity_selection_type.dart';
 import 'package:loginwithfitbit/ui/add_entry_bottom_sheet.dart';
 import '../services/fitbit_service.dart';
@@ -7,9 +9,22 @@ import 'package:loginwithfitbit/ui/food/food_entry_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final FitbitService fitbitService;
+  final Future<Activity>? activities; // Made nullable as it's not always required
 
-  const ProfilePage({super.key, required this.fitbitService});
+  const ProfilePage({
+    super.key, // Always pass key to super
+    required this.fitbitService,
+  }) : activities = null; // Initialize 'activities' to null for this constructor
 
+  // 2. Second Constructor (Named): Takes activities string
+  // It explicitly sets 'fitbitService' to null since it's not provided here.
+  const ProfilePage.forActivities( {
+    super.key, // Always pass key to super
+    required this.activities,
+    required this.fitbitService
+  }) ; // Initialize 'fitbitService' to null for this constructor
+
+  
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
@@ -17,13 +32,13 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   String _status = 'Loading profile...';
   Map<String, dynamic>? _profile;
+  List<Activity> _activities = []; // Stores the fetched activity data
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
   }
-
   Future<void> _loadProfile() async {
     final profile = await widget.fitbitService.getProfile();
     setState(() {
@@ -34,6 +49,14 @@ class _ProfilePageState extends State<ProfilePage> {
         _status = 'Failed to load profile';
       }
     });
+  }
+
+  Future<List<Activity>> _fetchActivityLog() async {
+
+      DateTime now = DateTime.now();
+      String onlyDate = DateFormat('yyyy-MM-dd').format(now);
+      _activities = await widget.fitbitService.fetchActivityLog(onlyDate,"asc","0","10");
+    return _activities;
   }
 
   Future<void> _chooseAndAddFavorite() async {
@@ -136,6 +159,55 @@ class _ProfilePageState extends State<ProfilePage> {
                 ElevatedButton(
                   onPressed: _chooseAndAddFavorite,
                   child: const Text('Choose and Add Favorite Activity'),
+                ),
+
+                const SizedBox(height: 20),
+                // 🔽 ListView with fixed height inside scrollable area
+                SizedBox(
+                height: 200,
+                  child: FutureBuilder<List<Activity>>(
+                    future: _fetchActivityLog(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator());
+                      } else if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return Center(child: Text('No activities found.'));
+                      } else {
+                        final activities = snapshot.data!;
+                        return ListView.builder(
+                          padding: EdgeInsets.all(12),
+                          itemCount: activities.length,
+                          itemBuilder: (context, index) {
+                            final activity = activities[index];
+                            return Card(
+                              elevation: 4,
+                              margin: EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: ListTile(
+                                leading: Icon(Icons.fitness_center, color: Colors.blueAccent),
+                                title: Text(
+                                  activity.name,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  'Calories burned: ${activity.calories}',
+                                  style: TextStyle(color: Colors.grey[700]),
+                                ),
+                                trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                              ),
+                            );
+                          },
+                        );
+                      }
+                    },
+                  ),
                 ),
               ] else ...[
                 Text(_status),

@@ -19,6 +19,9 @@ class FitbitService {
 
   String? accessToken;
   final String encodedScopes = scopes.join('%20');
+  List<Activity> _activities = []; // Stores the fetched activity data
+  bool _isLoading = false; // Indicates if data is currently being fetched
+  String? _errorMessage; // Stores error messages if API call fails
 
   Uri getAuthUri() {
     return Uri.parse(
@@ -74,6 +77,7 @@ class FitbitService {
 
   Future<Map<String, dynamic>?> getProfile() async {
     if (accessToken == null) return null;
+     print("Profile...$accessToken");
 
     final response = await http.get(
       Uri.parse('https://api.fitbit.com/1/user/-/profile.json'),
@@ -198,6 +202,7 @@ class FitbitService {
   //Get Frequent Activity Api
   Future<List<Activity>> getFrequentActivitiesTypes() async {
   if (accessToken == null) return [];
+  print("Get Frequent Activities $accessToken");
   final response = await http.get(
     Uri.parse('https://api.fitbit.com/1/user/-/activities/frequent.json'),
     headers: {
@@ -206,6 +211,8 @@ class FitbitService {
   );
   if (response.statusCode == 200) {
     final List<dynamic> data = jsonDecode(response.body);
+    print("Success ");
+    print(data);
     return data.map((item) => Activity.fromJson(item)).toList();
   }
   print('Activities error: ${response.body}');
@@ -247,8 +254,7 @@ class FitbitService {
     print('Frequent foods error: ${response.body}');
     return [];
   }
-
-Future<List<Activity>> createActivityLog({
+Future<Activity> createActivityLog({
     required String activityId,
     required String manualCalories,
     required String startTime,        // HH:mm format
@@ -256,9 +262,10 @@ Future<List<Activity>> createActivityLog({
     required String date,             // yyyy-MM-dd
     required String distance,
     required String distanceUnit,     // "Kilometer" / "Mile"
-  }) async {
+  }) async {   
 
     print("Create Activity Log...");
+    print("Token:$accessToken");
   final response = await http.post(
       Uri.parse('https://api.fitbit.com/1/user/-/activities.json'),
       headers: {
@@ -275,14 +282,85 @@ Future<List<Activity>> createActivityLog({
         'distanceUnit':distanceUnit
       },
     );
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      return jsonDecode(response.body) as Future<List<Activity>>;
+    
+  if (response.statusCode == 201 || response.statusCode == 200) {
+    // Decode the entire response body into a Map
+    final Map<String, dynamic> responseBodyMap = jsonDecode(response.body);
+    print("Response Body Map:+$responseBodyMap");
+    final Map<String, dynamic> activityLogData =
+    responseBodyMap['activityLog'] as Map<String, dynamic>;
+   final Activity activity = Activity.fromJson(activityLogData);
+
+    
+    print("#######");
+    print(activity.activityTypeId);
+
+      return activity; // Parse the nested map into an Activity object
+    } else {
+      throw Exception('API response missing "activityLog" key or it\'s not a Map: ${response.body}');
     }
+  
+}
 
-    throw Exception(
-        'Failed (${response.statusCode}): ${response.body}');
+Future<List<Activity>> fetchActivityLog(
+    String afterDate,
+    String sort,
+    String offset,
+    String limit,
+  ) async {
 
-  }
+     print("FitBitch ...");
+
+    // Construct query parameters
+    final Map<String, String> queryParameters = {
+      'afterDate': afterDate,
+      'sort': sort,
+      'offset': offset,
+      'limit': limit,
+    };
+    print(".......1...");
+    // Build the URI for the Fitbit API endpoint
+    final Uri uri = Uri.https(
+      'api.fitbit.com',
+      '/1/user/-/activities/list.json',
+      queryParameters,
+    );
+    try {
+      // Make the HTTP GET request
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $accessToken', // Use the token
+        },
+      );
+      print(response.statusCode);
+      // Check the response status code
+      if (response.statusCode == 200) {
+        // Parse the JSON response
+        final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+        print(response.body);
+        // Check if the 'activities' key exists and is a list
+        if (jsonResponse.containsKey('activities') && jsonResponse['activities'] is List) {
+          _activities = (jsonResponse['activities'] as List)
+              .map<Activity>((json) => Activity.fromJson(json))
+              .toList();
+          return _activities; // Success: Return the parsed list of activities
+        } else {
+          // Handle unexpected JSON structure (e.g., 'activities' key is missing or not a list)
+          print('Error: API response missing "activities" key or it\'s not a List: ${response.body}');
+          return []; // Return empty list for malformed JSON response
+        }
+      } else {
+        // Handle non-200 status codes (e.g., 401 Unauthorized, 404 Not Found)
+        print('Error fetching activity log. Status code: ${response.statusCode}, Body: ${response.body}');
+        return []; // Return empty list for non-200 HTTP responses
+      }
+    } catch (e) {
+      // Handle network or parsing exceptions (e.g., no internet, invalid JSON, etc.)
+      print('Exception while fetching activity log: $e');
+      return []; // Return empty list on any exception
+    }
+  }  
 // SharedPreferences Key
   static const String _customFoodIdsKey = 'custom_food_ids';
 
