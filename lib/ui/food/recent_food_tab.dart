@@ -1,35 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:loginwithfitbit/services/fitbit_service.dart';
 
-import '../../services/fitbit_service.dart';
+class RecentFoodTab extends StatefulWidget {
+  const RecentFoodTab({Key? key}) : super(key: key);
 
+  @override
+  _RecentFoodTabState createState() => _RecentFoodTabState();
+}
 
-class RecentFoodTab extends StatelessWidget {
-  final FitbitService fitbitService;
+class _RecentFoodTabState extends State<RecentFoodTab> {
+  final FitbitService fitbitService = FitbitService();
+  List<Map<String, dynamic>> foods = [];
 
-  const RecentFoodTab({super.key, required this.fitbitService});
+  @override
+  void initState() {
+    super.initState();
+    _fetchRecentFoods(); // Call API to fetch recent foods
+  }
+
+  Future<void> _fetchRecentFoods() async {
+    await fitbitService.loadAccessToken();
+    final data = await fitbitService.getRecentFoodLogs();
+    setState(() {
+      foods = data;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: fitbitService.getRecentFoodLogs(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('No recent foods'));
-        }
-
-        final foods = snapshot.data!;
-        return ListView.builder(
-          itemCount: foods.length,
-          itemBuilder: (context, index) {
-            final food = foods[index];
-            return ListTile(
-              title: Text(food['loggedFood']['name']),
-              subtitle: Text('${food['loggedFood']['calories']} kcal'),
-            );
-          },
+    return ListView.builder(
+      itemCount: foods.length,
+      itemBuilder: (context, index) {
+        final food = foods[index];
+        return ListTile(
+          title: Text(food['name'] ?? 'No Name'),
+          subtitle: Text('${food['calories'] ?? 0} kcal'),
         );
       },
     );

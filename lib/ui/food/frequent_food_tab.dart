@@ -1,35 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:loginwithfitbit/services/fitbit_service.dart';
 
-import '../../services/fitbit_service.dart';
+class FrequentFoodTab extends StatefulWidget {
+  const FrequentFoodTab({super.key});
 
+  @override
+  State<FrequentFoodTab> createState() => _FrequentFoodTabState();
+}
 
-class FrequentFoodTab extends StatelessWidget {
-  final FitbitService fitbitService;
+class _FrequentFoodTabState extends State<FrequentFoodTab> {
+  final FitbitService fitbitService = FitbitService();
+  List<Map<String, dynamic>> foods = [];
 
-  const FrequentFoodTab({super.key, required this.fitbitService});
+  @override
+  void initState() {
+    super.initState();
+    _fetchFrequentFoods();
+  }
+
+  Future<void> _fetchFrequentFoods() async {
+    await fitbitService.loadAccessToken();
+    final data = await fitbitService.getFrequentFoodLogs();
+    setState(() {
+      foods = data;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: fitbitService.getFrequentFoodLogs(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('No frequent foods'));
-        }
-
-        final foods = snapshot.data!;
-        return ListView.builder(
-          itemCount: foods.length,
-          itemBuilder: (context, index) {
-            final food = foods[index];
-            return ListTile(
-              title: Text(food['loggedFood']['name']),
-              subtitle: Text('${food['loggedFood']['calories']} kcal'),
-            );
-          },
+    return ListView.builder(
+      itemCount: foods.length,
+      itemBuilder: (context, index) {
+        final food = foods[index];
+        return ListTile(
+          title: Text(food['name'] ?? 'No Name'),
+          subtitle: Text('${food['calories'] ?? 0} kcal'),
         );
       },
     );

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'add_custom_food.dart';
+import 'recent_food_tab.dart';
+import 'frequent_food_tab.dart';
+
 import 'package:loginwithfitbit/services/fitbit_service.dart';
 
 class FoodEntryPage extends StatefulWidget {
@@ -91,11 +94,12 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
       body: TabBarView(
         controller: _tabController,
         children: [
-          Container(), // TODO: Implement Frequent
-          Container(), // TODO: Implement Recent
+          const FrequentFoodTab(),
+          const RecentFoodTab(),
           _buildCustomTab(),
         ],
       ),
+
     );
   }
 }
