@@ -464,6 +464,70 @@ Future<List<Activity>> fetchActivityLog(
     accessToken = prefs.getString('fitbitAccessToken');
   }
 
+  Future<List<Map<String, String>>> searchFoods(String query) async {
+    if (accessToken == null) return [];
 
+    final response = await http.get(
+      Uri.parse('https://api.fitbit.com/1/foods/search.json?query=$query'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+      },
+    );
 
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(response.body);
+
+      if (data.containsKey('foods') && data['foods'] is List) {
+        List<Map<String, String>> foods = [];
+
+        for (var food in data['foods']) {
+          final foodId = food['foodId']?.toString() ?? '';
+          final unitId = food['unitId']?.toString() ?? '';  // Capture unitId here
+
+          // If no unitId, assign a default one
+          final finalUnitId = unitId.isEmpty ? '304' : unitId;
+
+          foods.add({
+            'foodId': foodId,
+            'name': food['name'] ?? 'Unknown',
+            'description': food['description'] ?? '',
+            'unitId': finalUnitId,  // Add unitId (default if missing)
+          });
+        }
+
+        print("Search Results: $foods");  // Debug output to show unitId for each food
+        return foods;
+      } else {
+        print('No "foods" key found in response');
+        return [];
+      }
+    }
+
+    print('Search foods error: ${response.body}');
+    return [];
+  }
+
+  Future<bool> logFood({required String foodId, required String amount, required String unitId}) async {
+    if (accessToken == null) return false;
+
+    print('Logging food: foodId=$foodId, amount=$amount, unitId=$unitId');  // Add log to debug
+
+    final response = await http.post(
+      Uri.parse('https://api.fitbit.com/1/user/-/foods/log.json'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: {
+        'foodId': foodId,
+        'mealTypeId': '7', // Default meal type (7 = Anytime), adjust if needed
+        'amount': amount,
+        'unitId': unitId,  // Use the dynamic unitId here
+        'date': DateTime.now().toIso8601String().split('T').first,
+      },
+    );
+
+    print('Log Food Response: ${response.statusCode} - ${response.body}');  // Log response
+    return response.statusCode == 201 || response.statusCode == 200;
+  }
 }
