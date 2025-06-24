@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Import for date and time formatting
 import 'package:loginwithfitbit/model/activity.dart'; // Ensure this path is correct
@@ -32,8 +34,6 @@ class _CreateActivityLogState extends State<CreateActivityLog> {
   // Use DateTime objects to store selected date and time for easier manipulation
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
-  String? _selectedUnit;
-
 
   @override
   void initState() {
@@ -96,12 +96,11 @@ class _CreateActivityLogState extends State<CreateActivityLog> {
   }
 
 
-  Future<Activity?> _createAndLogActivity() async {
+  Future<List?> _createAndLogActivity() async {
     // Basic validation
     if (widget.selectedActivity?.activityTypeId == null || _manualCaloriesController.text.isEmpty ||
         _startTimeController.text.isEmpty || _durationMillisController.text.isEmpty ||
-        _dateController.text.isEmpty || _distanceController.text.isEmpty ||
-        _selectedUnit == null || _selectedUnit!.isEmpty) {
+        _dateController.text.isEmpty || _distanceController.text.isEmpty ) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please fill all required fields.'),
@@ -115,38 +114,74 @@ class _CreateActivityLogState extends State<CreateActivityLog> {
       _isLoading = true; // Show loading indicator
     });
     try {
-      _createActivitiesLog = widget.fitbitService.createActivityLog(activityId: widget.selectedActivity!.activityTypeId.toString(), manualCalories: _manualCaloriesController.text, startTime: _startTimeController.text, durationMillis: _durationMillisController.text, date: _dateController.text, distance: _distanceController.text, distanceUnit: _selectedUnit.toString());
-      // ✅ Show success SnackBar
+      // Await the API call (this is VERY important!)
+      final createdActivity = await widget.fitbitService.createActivityLog(
+        activityId: widget.selectedActivity!.activityTypeId.toString(),
+        manualCalories: _manualCaloriesController.text,
+        startTime: _startTimeController.text,
+        durationMillis: _durationMillisController.text,
+        date: _dateController.text,
+        distance: _distanceController.text
+      );
+
+      // Handle null (or failed creation)
+      if (createdActivity == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to create activity log. Please try again.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return[];
+      }
+
+      // ✅ Success: show success snackbar
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Activity log created successfully!'),
-          backgroundColor: const Color.fromARGB(255, 241, 243, 245),
-          duration: const Duration(seconds: 2),
+          backgroundColor: Color.fromARGB(255, 24, 158, 67),
+          duration: Duration(seconds: 2),
         ),
       );
-      print(_createActivitiesLog);
-      // Optionally navigate back or clear fields
-      // Navigator.pop(context, createdActivity); // Pass back the created activity if needed
-      _clearFields(); // Clear fields after successful submission
-        // ✅ Navigate to ProfilePage after success
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(builder: (context) => ProfilePage.forActivities(fitbitService:widget.fitbitService ,activities: _createActivitiesLog)),
-  );
 
+      _clearFields(); // Clear form
+
+      // ✅ Navigate to ProfilePage
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ProfilePage(
+            fitbitService: widget.fitbitService,
+          ),
+        ),
+      );
     } catch (e) {
-      // ❌ Show error SnackBar
+      // ❌ Handle and show error
+      String errorMessage = 'Something went wrong.';
+      
+      if (e is SocketException) {
+        errorMessage = 'No internet connection.';
+      } else if (e is FormatException) {
+        errorMessage = 'Invalid response format from server.';
+      } else if (e is HttpException) {
+        errorMessage = 'Server error: ${e.message}';
+      } else {
+        errorMessage = e.toString(); // fallback
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error creating activity log: ${e.toString()}'),
+          content: Text('Error: $errorMessage'),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 4),
         ),
       );
-      print('Error creating activity log: $e'); // Log for debugging
+
+      print('Error creating activity log: $e');
     } finally {
       setState(() {
-        _isLoading = false; // Hide loading indicator
+        _isLoading = false;
       });
     }
   }
@@ -159,9 +194,6 @@ class _CreateActivityLogState extends State<CreateActivityLog> {
     _manualCaloriesController.clear();
     _durationMillisController.clear();
     _distanceController.clear();
-    _selectedUnit = null;
-
-
     // Reset date/time to current
     _selectedDate = DateTime.now();
     _dateController.text = DateFormat('yyyy-MM-dd').format(_selectedDate!);
@@ -205,7 +237,7 @@ class _CreateActivityLogState extends State<CreateActivityLog> {
                   TextField(
                     controller: _manualCaloriesController,
                     decoration: InputDecoration(
-                      labelText: 'Manual Calories (kcal)',
+                      labelText: 'Energy Burned Calories (kcal)',
                       hintText: 'e.g., 500',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10.0),
@@ -279,31 +311,6 @@ class _CreateActivityLogState extends State<CreateActivityLog> {
                     keyboardType: TextInputType.number,
                   ),
                   const SizedBox(height: 15),
-
-                  // Distance Unit
-                  DropdownButtonFormField<String>(
-                  value: _selectedUnit,
-                  decoration: InputDecoration(
-                    labelText: 'Distance Unit',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                    ),
-                    prefixIcon: const Icon(Icons.straighten),
-                  ),
-                  items: ['meter', 'miles'].map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value[0].toUpperCase() + value.substring(1)), // Capitalize
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      _selectedUnit = newValue;
-                    });
-                  },
-                ),
-                  const SizedBox(height: 30),
-
                   // ElevatedButton
                   ElevatedButton.icon(
                     onPressed: _createAndLogActivity,

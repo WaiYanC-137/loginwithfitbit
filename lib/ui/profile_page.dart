@@ -15,15 +15,6 @@ class ProfilePage extends StatefulWidget {
     super.key, // Always pass key to super
     required this.fitbitService,
   }) : activities = null; // Initialize 'activities' to null for this constructor
-
-  // 2. Second Constructor (Named): Takes activities string
-  // It explicitly sets 'fitbitService' to null since it's not provided here.
-  const ProfilePage.forActivities( {
-    super.key, // Always pass key to super
-    required this.activities,
-    required this.fitbitService
-  }) ; // Initialize 'fitbitService' to null for this constructor
-
   
   @override
   State<ProfilePage> createState() => _ProfilePageState();

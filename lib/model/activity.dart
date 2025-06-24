@@ -23,7 +23,7 @@ class Activity {
 
   factory Activity.fromJson(Map<String, dynamic> json) {
     return Activity(
-      activityTypeId: (json['activityId'] ?? 0) as int,
+      activityTypeId: (json['activityId'] ?? json['id'] ?? 0) as int,
       calories: (json['calories'] ?? 0) as int,
       description: json['description']?.toString() ?? '',
       distance: (json['distance'] as num?)?.toDouble() ?? 0.0,
