@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:loginwithfitbit/model/activity.dart';
 import 'package:loginwithfitbit/services/fitbit_service.dart';
@@ -17,28 +19,102 @@ class ActivityListScreen extends StatefulWidget {
 
 class _ActivitySelectionPageState extends State<ActivityListScreen> {
   late Future<List<Activity>> _recentActivitiesFuture;
-  late Future<List<Activity>> _popularActivitiesFuture;
+  late Future<List<Activity>> _popularActivitiesFuture;  
+  late List<Activity> _getAllActivityType;
+  List<Activity> _filteredActivities = [];
+  bool _isSearching = false;
+
+
+  late final TextEditingController _searchController;
+
   @override
   void initState() {
     super.initState();
+    _searchController = TextEditingController();
     _recentActivitiesFuture = widget.fitbitService.getRecentActivitiesTypes();
     _popularActivitiesFuture = widget.fitbitService.getFrequentActivitiesTypes();
-
+    _searchController.addListener(_onSearchChanged);
   }
+
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() async{
+    _isSearching=true;
+    _getAllActivityType=await widget.fitbitService.getAllActivitiesTypes();
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredActivities = _getAllActivityType
+          .where((activity) => activity.name.toLowerCase().contains(query))
+          .toList();
+    });
+  }
+  
 @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Activities")),
-      body: Column(
-        children: [
-          const SectionHeader("Recent Activities"),
-          Expanded(child: _buildSection(_recentActivitiesFuture , recent: true)),
-          const SectionHeader("Most Popular Activities"),
-          Expanded(child: _buildSection(_popularActivitiesFuture, recent: false)),
-        ],
+       appBar: AppBar(
+        title: TextField(
+          controller: _searchController,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Search Activity...',
+            hintStyle: TextStyle(color: Colors.white70),
+            border: InputBorder.none,
+            icon: Icon(Icons.search, color: Colors.white),
+          ),
+        ),
+        backgroundColor: Colors.deepPurple,
       ),
+    body: _isSearching ? _buildFilteredList() : _buildDefaultSections(),
     );
   }
+
+ Widget _buildDefaultSections() {
+    return Column(
+      children: [
+        const SectionHeader('Recent Activities'),
+        Expanded(child: _buildSection(_recentActivitiesFuture , recent: true)),
+        const SectionHeader('Most Popular Activities'),
+      Expanded(child: _buildSection(_popularActivitiesFuture, recent: false)),
+
+      ],
+    );
+  }
+
+  Widget _buildFilteredList() {
+    if (_filteredActivities.isEmpty) {
+      return const Center(child: Text('No activities match your search'));
+    }
+    return ListView.builder(
+  itemCount: _filteredActivities.length,
+  itemBuilder: (_, i) {
+    final activity = _filteredActivities[i];
+    return Card(
+      margin: const EdgeInsets.all(8),
+      child: ListTile(
+        onTap: () {
+                    // Navigate to the ActivityFormPage, passing the selected activity
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CreateActivityLog(
+                          fitbitService: widget.fitbitService, // Pass FitbitService
+                          selectedActivity:activity, // Pass the selected Activity object
+                        ),
+                      ),
+                    );
+                  },   
+        title: Text(activity.name),
+             ),
+    );
+  },
+);
+
+  }
+
 Widget _buildSection(Future<List<Activity>> future, {required bool recent}) {
     return FutureBuilder<List<Activity>>(
       future: future,
@@ -58,49 +134,31 @@ Widget _buildSection(Future<List<Activity>> future, {required bool recent}) {
         return ListView.builder(
           itemCount: list.length,
           itemBuilder: (_, i) {
-            final recentActivities = list[i];
+            final activities = list[i];
             return Card(
               margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0), // Smaller margins for compact cards
               elevation: 1, // Subtle shadow
               child: ListTile( 
-                onTap: () {
-                                   // Print the name of the selected activity
-                  print("Tapped activity: ${recentActivities.name}");
-
-                  // Navigate to the ActivityFormPage, passing the selected activity
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CreateActivityLog(
-                        fitbitService: widget.fitbitService, // Pass FitbitService
-                        selectedActivity: recentActivities, // Pass the selected Activity object
+                  onTap: () {
+                    // Navigate to the ActivityFormPage, passing the selected activity
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CreateActivityLog(
+                          fitbitService: widget.fitbitService, // Pass FitbitService
+                          selectedActivity: activities, // Pass the selected Activity object
+                        ),
                       ),
-                    ),
-                  ).then((result) {
-                    // This block executes when ActivityFormPage is popped
-                    if (result == true) {
-                      // Optionally, refresh recent activities if a new one was logged
-                      // setState(() {
-                      //   _recentActivitiesFuture = widget.fitbitService.getRecentActivitiesTypes();
-                      // });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('${recentActivities.name} logged successfully!')),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Activity logging cancelled.')),
-                      );
-                    }
-                  });
-                },         
-                title: Text(recentActivities.name),
+                    );
+                  },         
+                title: Text(activities.name),
                 subtitle: recent
-                  ? Text(recentActivities.description.isEmpty
+                  ? Text(activities.description.isEmpty
                         ? "No description"
-                        : recentActivities.description)
-                  : Text("${recentActivities.calories} cal • ${recentActivities.distance} km"),
+                        : activities.description)
+                  : Text("${activities.calories} cal • ${activities.distance} km"),
               trailing:
-                  Text("${(recentActivities.duration / 60000).toStringAsFixed(1)} min"),),
+                  Text("${(activities.duration / 60000).toStringAsFixed(1)} min"),),
 
             );
           },
@@ -108,6 +166,7 @@ Widget _buildSection(Future<List<Activity>> future, {required bool recent}) {
       },
     );
   }
+   
 }
 
 class SectionHeader extends StatelessWidget {
