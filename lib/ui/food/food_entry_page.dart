@@ -18,56 +18,46 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
   List<Map<String, String>> customFoods = [];
   List<Map<String, String>> searchResults = [];
   TextEditingController _searchController = TextEditingController();
+  bool _showSearch = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _fetchCustomFoods(); // Load when screen initializes
+    _fetchCustomFoods();
+    _searchController.addListener(() {
+      if (_searchController.text.isEmpty) {
+        setState(() {
+          searchResults = customFoods;
+        });
+      }
+    });
   }
 
   void _fetchCustomFoods() async {
     await fitbitService.loadAccessToken();
-    final foods = await fitbitService.searchFoods("");
-
-    final seenNames = <String>{};
-    final uniqueFoods = foods.where((food) {
-      final name = food['name'] ?? '';
-      if (seenNames.contains(name)) {
-        return false;
-      } else {
-        seenNames.add(name);
-        return true;
-      }
-    }).toList();
+    final foods = await fitbitService.getCustomFoods();
 
     setState(() {
       customFoods.clear();
-      customFoods.addAll(uniqueFoods);
+      customFoods.addAll(foods);
       searchResults = customFoods;
     });
   }
 
-
+  // Updated _searchFoods method to search all foods from Fitbit
   void _searchFoods(String query) async {
-    await fitbitService.loadAccessToken();  // Ensure access token is loaded before searching
-    final foods = await fitbitService.searchFoods(query);  // Perform search
-
-    // Filter to keep only unique food names
-    final seenNames = <String>{};
-    final uniqueFoods = foods.where((food) {
-      final name = food['name'] ?? '';
-      if (seenNames.contains(name)) {
-        return false;
-      } else {
-        seenNames.add(name);
-        return true;
-      }
-    }).toList();
-
-    setState(() {
-      searchResults = uniqueFoods;  // Update UI with unique results
-    });
+    if (query.isEmpty) {
+      setState(() {
+        searchResults = customFoods;
+      });
+    } else {
+      await fitbitService.loadAccessToken();
+      final results = await fitbitService.searchFoods(query); // Searching all foods
+      setState(() {
+        searchResults = results;
+      });
+    }
   }
 
   void _addCustomFood() async {
@@ -79,13 +69,12 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
     );
 
     if (newFood != null && newFood is Map<String, String>) {
-      await fitbitService.loadAccessToken(); // Load saved token again before creating
+      await fitbitService.loadAccessToken();
 
       bool success = await fitbitService.createCustomFood(
         name: newFood['name'] ?? '',
         description: newFood['description'] ?? '',
         calories: newFood['calories'] ?? '0',
-
       );
 
       if (success) {
@@ -94,11 +83,10 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
         print('Failed to create custom food on Fitbit');
       }
 
-      _fetchCustomFoods(); // Refresh list after adding
+      _fetchCustomFoods();
     }
   }
 
-  // Show Food Details when clicked
   void _showFoodDetails(Map<String, String> food) {
     Navigator.push(
       context,
@@ -109,20 +97,11 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
   }
 
   Widget _buildCustomTab() {
+    final List<Map<String, String>> displayedFoods =
+    _searchController.text.isEmpty ? customFoods : searchResults;
+
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: TextField(
-            controller: _searchController,
-            onChanged: _searchFoods,
-            decoration: InputDecoration(
-              hintText: 'Search food...',
-              border: OutlineInputBorder(),
-              prefixIcon: const Icon(Icons.search),
-            ),
-          ),
-        ),
         ListTile(
           leading: const Icon(Icons.add, color: Colors.pink),
           title: const Text("ADD CUSTOM FOOD", style: TextStyle(color: Colors.pink)),
@@ -130,15 +109,15 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
         ),
         Expanded(
           child: ListView.builder(
-            itemCount: searchResults.length,
+            itemCount: displayedFoods.length,
             itemBuilder: (context, index) {
-              final food = searchResults[index];
+              final food = displayedFoods[index];
               return GestureDetector(
                 onTap: () => _showFoodDetails(food),
                 child: Card(
-                  margin: EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+                  margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
                   child: ListTile(
-                    contentPadding: EdgeInsets.all(10),
+                    contentPadding: const EdgeInsets.all(10),
                     title: Text(food['name'] ?? ''),
                     subtitle: Text(food['description'] ?? ''),
                   ),
@@ -155,7 +134,40 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Log Food"),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween, // Space between title and icon/search
+          children: [
+            const Text("Log Food"),
+            if (_showSearch)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 10),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _searchFoods, // Trigger search on change
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      hintText: 'Search...',
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                  ),
+                ),
+              )
+            else
+              IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: () {
+                  setState(() {
+                    _showSearch = true;
+                  });
+                },
+              ),
+          ],
+        ),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
