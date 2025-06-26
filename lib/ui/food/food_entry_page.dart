@@ -3,7 +3,6 @@ import 'add_custom_food.dart';
 import 'recent_food_tab.dart';
 import 'frequent_food_tab.dart';
 import 'package:loginwithfitbit/services/fitbit_service.dart';
-import 'food_detail_page.dart';
 
 class FoodEntryPage extends StatefulWidget {
   const FoodEntryPage({super.key});
@@ -45,7 +44,6 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
     });
   }
 
-  // Updated _searchFoods method to search all foods from Fitbit
   void _searchFoods(String query) async {
     if (query.isEmpty) {
       setState(() {
@@ -53,7 +51,7 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
       });
     } else {
       await fitbitService.loadAccessToken();
-      final results = await fitbitService.searchFoods(query); // Searching all foods
+      final results = await fitbitService.searchFoods(query);
       setState(() {
         searchResults = results;
       });
@@ -79,21 +77,42 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
 
       if (success) {
         print('Custom food created on Fitbit');
+        _fetchCustomFoods();
       } else {
         print('Failed to create custom food on Fitbit');
       }
-
-      _fetchCustomFoods();
     }
   }
 
-  void _showFoodDetails(Map<String, String> food) {
-    Navigator.push(
+  void _addFoodFromSearch(Map<String, String> food) async {
+    final newFood = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => FoodDetailPage(food: food),
+        builder: (context) => AddCustomFood(
+          prefillName: food['name'] ?? '',
+          prefillDescription: food['description'] ?? '',
+          prefillCalories: food['calories'] ?? '0',
+          isSearchFood: true,  // Indicate that it's a search food
+        ),
       ),
     );
+
+    if (newFood != null && newFood is Map<String, String>) {
+      await fitbitService.loadAccessToken();
+
+      bool success = await fitbitService.logFood(
+        foodId: food['foodId'] ?? '',
+        amount: '1',
+        unitId: food['unitId'] ?? '304',
+      );
+
+      if (success) {
+        print('Food logged successfully');
+        Navigator.pop(context);  // Close the page after successful logging
+      } else {
+        print('Failed to log food');
+      }
+    }
   }
 
   Widget _buildCustomTab() {
@@ -113,7 +132,7 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
             itemBuilder: (context, index) {
               final food = displayedFoods[index];
               return GestureDetector(
-                onTap: () => _showFoodDetails(food),
+                onTap: () => _addFoodFromSearch(food),
                 child: Card(
                   margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
                   child: ListTile(
@@ -135,7 +154,7 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
     return Scaffold(
       appBar: AppBar(
         title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween, // Space between title and icon/search
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text("Log Food"),
             if (_showSearch)
@@ -144,7 +163,7 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
                   padding: const EdgeInsets.only(left: 10),
                   child: TextField(
                     controller: _searchController,
-                    onChanged: _searchFoods, // Trigger search on change
+                    onChanged: _searchFoods,
                     autofocus: true,
                     decoration: const InputDecoration(
                       hintText: 'Search...',

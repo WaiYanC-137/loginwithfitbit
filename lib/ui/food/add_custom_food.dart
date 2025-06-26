@@ -1,7 +1,18 @@
 import 'package:flutter/material.dart';
 
 class AddCustomFood extends StatefulWidget {
-  const AddCustomFood({super.key});
+  final String prefillName;
+  final String prefillDescription;
+  final String prefillCalories;
+  final bool isSearchFood;  // Flag to indicate whether it's a search food or custom food
+
+  const AddCustomFood({
+    super.key,
+    this.prefillName = '',
+    this.prefillDescription = '',
+    this.prefillCalories = '0',
+    this.isSearchFood = false, // Default to false for custom food
+  });
 
   @override
   State<AddCustomFood> createState() => _AddCustomFoodState();
@@ -19,6 +30,14 @@ class _AddCustomFoodState extends State<AddCustomFood> {
   bool simplifiedView = false;
 
   @override
+  void initState() {
+    super.initState();
+    foodName = widget.prefillName;
+    brand = widget.prefillDescription;
+    calories = widget.prefillCalories;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Create food')),
@@ -29,6 +48,7 @@ class _AddCustomFoodState extends State<AddCustomFood> {
           child: ListView(
             children: [
               TextFormField(
+                initialValue: foodName,
                 decoration: const InputDecoration(labelText: 'Food name'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -39,6 +59,7 @@ class _AddCustomFoodState extends State<AddCustomFood> {
                 onSaved: (value) => foodName = value ?? '',
               ),
               TextFormField(
+                initialValue: brand,
                 decoration: const InputDecoration(labelText: 'Brand'),
                 onSaved: (value) => brand = value ?? '',
               ),
@@ -65,6 +86,7 @@ class _AddCustomFoodState extends State<AddCustomFood> {
               ),
               const SizedBox(height: 16),
               TextFormField(
+                initialValue: calories,
                 decoration: const InputDecoration(labelText: 'Calories'),
                 keyboardType: TextInputType.number,
                 onSaved: (value) => calories = value ?? '0',
@@ -100,7 +122,7 @@ class _AddCustomFoodState extends State<AddCustomFood> {
                     });
                   }
                 },
-                child: const Text('SAVE CUSTOM FOOD'),
+                child: Text(widget.isSearchFood ? 'Add Search Food' : 'Save Custom Food'),
               ),
             ],
           ),
