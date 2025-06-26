@@ -132,80 +132,96 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-      body: Center(
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (_profile != null) ...[
-                Card(
-                  child: ListTile(
-                    title: Text(_profile!['fullName'] ?? 'No name'),
-                    subtitle: Text('Age: ${_profile!['age'] ?? 'Unknown'}'),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _chooseAndAddFavorite,
-                  child: const Text('Choose and Add Favorite Activity'),
-                ),
+    final now = DateTime.now();
+    final beginningOfThisWeek = now.subtract(Duration(days: now.weekday - 1));
+    final weekDates =
+        List.generate(7, (i) => beginningOfThisWeek.add(Duration(days: i)));
 
-                const SizedBox(height: 20),
-                // 🔽 ListView with fixed height inside scrollable area
-                SizedBox(
-                height: 200,
-                  child: FutureBuilder<List<Activity>>(
-                    future: _fetchActivityLog(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(child: CircularProgressIndicator());
-                      } else if (snapshot.hasError) {
-                        return Center(child: Text('Error: ${snapshot.error}'));
-                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return Center(child: Text('No activities found.'));
-                      } else {
-                        final activities = snapshot.data!;
-                        return ListView.builder(
-                          padding: EdgeInsets.all(12),
-                          itemCount: activities.length,
-                          itemBuilder: (context, index) {
-                            final activity = activities[index];
-                            return Card(
-                              elevation: 4,
-                              margin: EdgeInsets.symmetric(vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: ListTile(
-                                leading: Icon(Icons.fitness_center, color: Colors.blueAccent),
-                                title: Text(
-                                  activity.name,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  'Calories burned: ${activity.calories}',
-                                  style: TextStyle(color: Colors.grey[700]),
-                                ),
-                                trailing: Icon(Icons.arrow_forward_ios, size: 16),
-                              ),
-                            );
-                          },
-                        );
-                      }
-                    },
-                  ),
+    return Scaffold(
+      appBar: AppBar(
+        leading: const BackButton(),
+        title: const Text('Dashboard'),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+      ),
+      body: Container(
+        color: const Color(0xFFF5F8FF),
+        child:ColoredBox(color: Colors.white,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(0, 10, 0, 24),
+          children: [
+            /// DATE ROW (“Today, 6 Nov 2021  ˅”)
+            Container(
+              padding: const EdgeInsets.fromLTRB(10, 0, 0, 10),
+              child:Row(
+              children: [
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Today, ',
+                      style: TextStyle(
+                        color: Color(0xFF6759FF), // Purple color for "Today,"
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                    TextSpan(
+                      text: DateFormat('d MMM yyyy').format(now),
+                      style: TextStyle(
+                        color: Colors.black, // Black color for the date
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
                 ),
-              ] else ...[
-                Text(_status),
+              )
               ],
-            ],
-          ),
+              ),
+            ),
+            /// HORIZONTAL WEEK-DAY CHIPS
+            SizedBox( 
+               // give the horizontal list a fixed height
+              height: 120,            // adjust to suit your UI
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(10, 10, 0, 0),
+                scrollDirection: Axis.horizontal,
+                itemCount: weekDates.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final date = weekDates[index];
+                  final isToday = DateUtils.dateOnly(date) == DateUtils.dateOnly(now);
+                  final bool isBeforeToday = date.isBefore(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day));
+
+
+                  return Card(
+                    elevation: 2,  
+                    color: isToday ?const Color.fromARGB(255, 50, 27, 226) : Colors.white,
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(
+                        color: isBeforeToday ?const Color.fromARGB(255, 94, 236, 175) : Colors.transparent,                    // <-- border here
+                        width: 1.5,                              // thickness in logical pixels
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Padding(                       // breathing room for the chip
+                      padding: const EdgeInsets.all(4),
+                      child: DayChip(date: date, isToday: isToday),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            ..._mealCards,
+          ],
         ),
+        
+        ) // subtle bluish background
+        
       ),
       floatingActionButton: FloatingActionButton(
         onPressed:  _showAddEntryBottomSheet,
@@ -214,4 +230,187 @@ class _ProfilePageState extends State<ProfilePage> {
     ),
     );
   }
+ /// Dummy data for the cards
+  List<Widget> get _mealCards {
+    final meals = [
+      ('Breakfast', 'Recommended 483-717 kcal'),
+      ('Lunch', 'Recommended 516-870 kcal'),
+      ('Snack', 'Recommended 203-370 kcal'),
+      ('Dinner', 'Recommended 500-810 kcal'),
+    ];
+
+    return List.generate(meals.length, (i) {
+      final (title, subtitle) = meals[i];
+      final imgPath = 'assets/images/food${i + 1}.jpg'; // food1.png to food4.png
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(15,5,15,5),
+        child: MealCard(
+          title: title,
+          subtitle: subtitle,
+          imageUrl: imgPath,
+          imageOnRight: i.isEven, // even = right, odd = left
+
+        ),
+      );
+    });
+  }
+}
+
+/// ──────────────────────── INDIVIDUAL DAY CHIP ────────────────────────
+class DayChip extends StatelessWidget {
+  const DayChip({required this.date, required this.isToday, super.key});
+
+  final DateTime date;
+  final bool isToday;
+
+  @override
+  Widget build(BuildContext context) {
+    final purple = Theme.of(context).primaryColor;
+    return Column(
+      children: [
+        Padding(padding: const EdgeInsets.only(top: 10.0)),
+        Text(
+          DateFormat('E').format(date).toUpperCase(), // MON, TUE …
+          style: const TextStyle(fontSize: 18,color: Colors.grey),
+        ),
+        const SizedBox(height: 6),
+        const Spacer(),
+        Container(
+          width: 45,
+          height: 45,
+          margin: const EdgeInsets.only(bottom: 5),
+          decoration: BoxDecoration(
+            color: isToday ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(22.5),
+            border: Border.all(
+              color: Colors.transparent,
+              width: 2,
+            ),
+          ),
+          alignment: Alignment.center,
+          child:Padding(padding: const EdgeInsets.only(top: 1.0),child: Text(
+            '${date.day}',
+            style: TextStyle(
+              color: isToday ? const Color.fromARGB(255, 56, 34, 223) : Colors.black,
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+            ),
+          ),
+          )
+          
+        ),
+      ],
+    );
+  }
+}
+
+/// ─────────────────────────── MEAL CARD ───────────────────────────────
+/// a few deterministic pic ids so the images stay stable
+class MealCard extends StatelessWidget {
+  const MealCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.imageUrl,
+    required this.imageOnRight,
+  });
+
+  final String title;
+  final String subtitle;
+  final String imageUrl;
+  final bool imageOnRight;
+
+  @override
+  Widget build(BuildContext context) {
+    const double cardHeight = 130;
+    const double imageSize = 130;
+    const double imageWidth=180;
+
+    // decide which corner to round
+final BorderRadius imgRadius = imageOnRight
+    // image is on the right  → round its bottom-left corner
+    ? const BorderRadius.only(bottomLeft: Radius.circular(60),topRight:Radius.circular(60),bottomRight: Radius.circular(20) )
+    // image is on the left   → round its top-left corner
+    : const BorderRadius.only(topRight: Radius.circular(60));
+
+final imageWidget = Positioned(
+  right: imageOnRight ? -imageSize / 2 : null,
+  left: imageOnRight ? null : -imageSize / 2,
+  child: ClipRRect(
+    borderRadius: imgRadius,          // 👈  selective corner radius
+    child: Image.asset(
+      imageUrl,
+      width: imageWidth,
+      height: imageSize,
+      fit: BoxFit.cover,
+    ),
+  ),
+);
+
+    final content = Container(
+      height: cardHeight,
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            offset: Offset(0, 4),
+            blurRadius: 12,
+            color: Colors.black12,
+          )
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment:
+            imageOnRight ? MainAxisAlignment.start : MainAxisAlignment.end,
+        children: [
+          SizedBox(
+            width: 180,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+                const Spacer(),
+                ElevatedButton(
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6C63FF),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(60, 32),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('+ Add'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+  return SizedBox(
+    height: cardHeight,
+    child: Stack(
+      children: [
+        content,
+        imageWidget,
+      ],
+    ),
+  );
+
+
+  }
+
 }
