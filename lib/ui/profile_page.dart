@@ -104,9 +104,10 @@ class _ProfilePageState extends State<ProfilePage> {
           onFoodCardTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const FoodEntryPage()),
+              MaterialPageRoute(builder: (context) => const FoodEntryPage(isLogOnly: true)),
             );
           },
+
 
           onWaterCardTap: () {
             // TODO: Implement navigation or dialog for Water entry

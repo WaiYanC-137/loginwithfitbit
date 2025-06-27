@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:loginwithfitbit/services/fitbit_service.dart';
 
 class AddCustomFood extends StatefulWidget {
   final String prefillName;
   final String prefillDescription;
   final String prefillCalories;
-  final bool isSearchFood;  // Flag to indicate whether it's a search food or custom food
+  final bool isSearchFood;
+  final bool isQuickLog;
+  final String foodId;
+  final String unitId;
 
   const AddCustomFood({
     super.key,
     this.prefillName = '',
     this.prefillDescription = '',
     this.prefillCalories = '0',
-    this.isSearchFood = false, // Default to false for custom food
+    this.isSearchFood = false,
+    this.isQuickLog = false,
+    this.foodId = '',
+    this.unitId = '',
   });
 
   @override
@@ -40,7 +47,7 @@ class _AddCustomFoodState extends State<AddCustomFood> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create food')),
+      appBar: AppBar(title: const Text('Food Entry')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -70,7 +77,7 @@ class _AddCustomFoodState extends State<AddCustomFood> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: TextFormField(
-                      initialValue: '1',
+                      initialValue: servingSize,
                       keyboardType: TextInputType.number,
                       onSaved: (value) => servingSize = value ?? '1',
                     ),
@@ -78,7 +85,7 @@ class _AddCustomFoodState extends State<AddCustomFood> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: TextFormField(
-                      initialValue: 'bar',
+                      initialValue: servingUnit,
                       onSaved: (value) => servingUnit = value ?? 'bar',
                     ),
                   ),
@@ -112,17 +119,57 @@ class _AddCustomFoodState extends State<AddCustomFood> {
                   backgroundColor: Colors.pink,
                   foregroundColor: Colors.white,
                 ),
-                onPressed: () {
+                onPressed: () async {
                   if (_formKey.currentState!.validate()) {
                     _formKey.currentState!.save();
-                    Navigator.pop(context, {
-                      'name': foodName,
-                      'description': '$brand, $servingSize $servingUnit',
-                      'calories': calories,
-                    });
+
+                    if (widget.isQuickLog && widget.foodId.isNotEmpty && widget.unitId.isNotEmpty) {
+                      final fitbitService = FitbitService();
+                      await fitbitService.loadAccessToken();
+
+                      final success = await fitbitService.logFood(
+                        foodId: widget.foodId,
+                        amount: servingSize,
+                        unitId: widget.unitId,
+                      );
+
+                      if (success) {
+                        Navigator.pop(context, 'logged');
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Failed to log food')),
+                        );
+                      }
+                    } else {
+                      final fitbitService = FitbitService();
+                      await fitbitService.loadAccessToken();
+
+                      final success = await fitbitService.createCustomFood(
+                        name: foodName,
+                        description: '$brand, $servingSize $servingUnit',
+                        calories: calories,
+                        defaultServingSize: servingSize,
+                        defaultFoodMeasurementUnitId: '304',
+                        formType: 'DRY',
+                      );
+
+                      if (success) {
+                        Navigator.pop(context, 'created');
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Failed to create custom food')),
+                        );
+                      }
+                    }
                   }
                 },
-                child: Text(widget.isSearchFood ? 'Add Search Food' : 'Save Custom Food'),
+                child: Text(
+                  widget.isQuickLog
+                      ? 'Log Food'
+                      : widget.isSearchFood
+                      ? 'Add Search Food'
+                      : 'Save & Create Custom Food',
+                ),
               ),
             ],
           ),
