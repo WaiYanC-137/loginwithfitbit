@@ -1,44 +1,65 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'add_custom_food.dart';
 import 'recent_food_tab.dart';
 import 'frequent_food_tab.dart';
+import 'quick_log_page.dart';
 import 'package:loginwithfitbit/services/fitbit_service.dart';
 
 class FoodEntryPage extends StatefulWidget {
   final bool isLogOnly;
+  final String? mealType;
+  final bool showOnlyCustomTab;
 
-  const FoodEntryPage({super.key, this.isLogOnly = false});
+  const FoodEntryPage({
+    super.key,
+    this.isLogOnly = false,
+    this.mealType,
+    this.showOnlyCustomTab = false,
+  });
 
   @override
   State<FoodEntryPage> createState() => _FoodEntryPageState();
 }
 
-class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProviderStateMixin {
-  TabController? _tabController;
+class _FoodEntryPageState extends State<FoodEntryPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   final FitbitService fitbitService = FitbitService();
+  String? _cachedAccessToken;
   List<Map<String, String>> customFoods = [];
   List<Map<String, String>> searchResults = [];
   TextEditingController _searchController = TextEditingController();
   bool _showSearch = false;
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
-    if (!widget.isLogOnly) {
+
+    if (widget.isLogOnly && !widget.showOnlyCustomTab) {
       _tabController = TabController(length: 3, vsync: this);
-      _searchController.addListener(() {
-        if (_searchController.text.isEmpty) {
-          setState(() {
-            searchResults = customFoods;
-          });
-        }
-      });
     }
+
+    _searchController.addListener(() {
+      _searchFoods(_searchController.text);
+    });
+
     _fetchCustomFoods();
   }
 
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _fetchCustomFoods() async {
-    await fitbitService.loadAccessToken();
+    if (_cachedAccessToken == null) {
+      await fitbitService.loadAccessToken();
+      _cachedAccessToken = fitbitService.accessToken;
+    }
     final foods = await fitbitService.getCustomFoods();
 
     setState(() {
@@ -47,6 +68,9 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
         return {
           'name': food['name'] ?? '',
           'description': food['description'] ?? '',
+          'calories': food['calories'] ?? '',
+          'foodId': food['foodId'] ?? '',
+          'unitId': food['unitId'] ?? '',
         };
       }).toList());
 
@@ -54,18 +78,24 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
     });
   }
 
-  void _searchFoods(String query) async {
-    if (query.isEmpty) {
-      setState(() {
-        searchResults = customFoods;
-      });
-    } else {
-      await fitbitService.loadAccessToken();
-      final results = await fitbitService.searchFoods(query);
-      setState(() {
-        searchResults = results;
-      });
-    }
+  void _searchFoods(String query) {
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () async {
+      if (query.isEmpty) {
+        setState(() {
+          searchResults = customFoods;
+        });
+      } else {
+        if (_cachedAccessToken == null) {
+          await fitbitService.loadAccessToken();
+          _cachedAccessToken = fitbitService.accessToken;
+        }
+        final results = await fitbitService.searchFoods(query);
+        setState(() {
+          searchResults = results;
+        });
+      }
+    });
   }
 
   void _addCustomFood() async {
@@ -81,24 +111,41 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
     }
   }
 
-  void _addFoodFromSearch(Map<String, String> food) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddCustomFood(
-          prefillName: food['name'] ?? '',
-          prefillDescription: food['description'] ?? '',
-          prefillCalories: food['calories'] ?? '0',
-          isSearchFood: true,
-          foodId: food['foodId'] ?? '',
-          unitId: food['unitId'] ?? '304',
-          isQuickLog: true,
+  void _handleFoodTap(Map<String, dynamic> food) async {
+    if (widget.isLogOnly) {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => QuickLogPage(
+            mealType: widget.mealType ?? '',
+            foodName: food['name'] ?? '',
+            calories: (food['calories'] ?? '0').toString(),
+          ),
         ),
-      ),
-    );
+      );
 
-    if (result == 'logged') {
-      Navigator.pop(context);
+      if (result == 'logged') {
+        Navigator.pop(context);
+      }
+    } else {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AddCustomFood(
+            prefillName: food['name'] ?? '',
+            prefillDescription: food['description'] ?? '',
+            prefillCalories: (food['calories'] ?? '0').toString(),
+            isSearchFood: true,
+            foodId: food['foodId'] ?? '',
+            unitId: food['unitId'] ?? '304',
+            isQuickLog: true,
+          ),
+        ),
+      );
+
+      if (result == 'logged') {
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -107,18 +154,19 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
 
     return Column(
       children: [
-        ListTile(
-          leading: const Icon(Icons.add, color: Colors.pink),
-          title: const Text("ADD CUSTOM FOOD", style: TextStyle(color: Colors.pink)),
-          onTap: _addCustomFood,
-        ),
+        if (widget.showOnlyCustomTab)
+          ListTile(
+            leading: const Icon(Icons.add, color: Colors.pink),
+            title: const Text("ADD CUSTOM FOOD", style: TextStyle(color: Colors.pink)),
+            onTap: _addCustomFood,
+          ),
         Expanded(
           child: ListView.builder(
             itemCount: displayedFoods.length,
             itemBuilder: (context, index) {
               final food = displayedFoods[index];
               return GestureDetector(
-                onTap: () => _addFoodFromSearch(food),
+                onTap: () => _handleFoodTap(food),
                 child: Card(
                   margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
                   child: ListTile(
@@ -137,65 +185,32 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
+    final showTabs = widget.isLogOnly && !widget.showOnlyCustomTab;
+
     return Scaffold(
       appBar: AppBar(
-        title: widget.isLogOnly
-            ? const Text("Custom Food")
-            : Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text("Log Food"),
-            if (_showSearch)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 10),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _searchFoods,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Search...',
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                      border: OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                  ),
-                ),
-              )
-            else
-              IconButton(
-                icon: const Icon(Icons.search),
-                onPressed: () {
-                  setState(() {
-                    _showSearch = true;
-                  });
-                },
-              ),
-          ],
-        ),
-        bottom: widget.isLogOnly
-            ? null
-            : TabBar(
-          controller: _tabController!,
+        title: Text(widget.mealType ?? (widget.isLogOnly ? "Select Food" : "Log Food")),
+        bottom: showTabs
+            ? TabBar(
+          controller: _tabController,
           tabs: const [
             Tab(text: 'FREQUENT'),
             Tab(text: 'RECENT'),
             Tab(text: 'CUSTOM'),
           ],
-        ),
+        )
+            : null,
       ),
-      body: widget.isLogOnly
-          ? _buildCustomTab()
-          : TabBarView(
-        controller: _tabController!,
+      body: showTabs
+          ? TabBarView(
+        controller: _tabController,
         children: [
-          const FrequentFoodTab(),
-          const RecentFoodTab(),
+          FrequentFoodTab(onFoodTap: _handleFoodTap),
+          RecentFoodTab(onFoodTap: _handleFoodTap),
           _buildCustomTab(),
         ],
-      ),
+      )
+          : _buildCustomTab(),
     );
   }
 }

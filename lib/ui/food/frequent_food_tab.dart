@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:loginwithfitbit/services/fitbit_service.dart';
 
 class FrequentFoodTab extends StatefulWidget {
-  const FrequentFoodTab({super.key});
+  final Function(Map<String, dynamic>) onFoodTap;
+
+  const FrequentFoodTab({super.key, required this.onFoodTap});
 
   @override
   State<FrequentFoodTab> createState() => _FrequentFoodTabState();
@@ -35,6 +37,7 @@ class _FrequentFoodTabState extends State<FrequentFoodTab> {
         return ListTile(
           title: Text(food['name'] ?? 'No Name'),
           subtitle: Text('${food['calories'] ?? 0} kcal'),
+          onTap: () => widget.onFoodTap(food),
         );
       },
     );

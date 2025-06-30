@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:loginwithfitbit/services/fitbit_service.dart';
 
 class RecentFoodTab extends StatefulWidget {
-  const RecentFoodTab({Key? key}) : super(key: key);
+  final Function(Map<String, dynamic>) onFoodTap;
+
+  const RecentFoodTab({Key? key, required this.onFoodTap}) : super(key: key);
 
   @override
   _RecentFoodTabState createState() => _RecentFoodTabState();
@@ -15,7 +17,7 @@ class _RecentFoodTabState extends State<RecentFoodTab> {
   @override
   void initState() {
     super.initState();
-    _fetchRecentFoods(); // Call API to fetch recent foods
+    _fetchRecentFoods();
   }
 
   Future<void> _fetchRecentFoods() async {
@@ -35,6 +37,7 @@ class _RecentFoodTabState extends State<RecentFoodTab> {
         return ListTile(
           title: Text(food['name'] ?? 'No Name'),
           subtitle: Text('${food['calories'] ?? 0} kcal'),
+          onTap: () => widget.onFoodTap(food),
         );
       },
     );
