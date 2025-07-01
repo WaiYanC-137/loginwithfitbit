@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:loginwithfitbit/services/fitbit_service.dart';
+import 'package:intl/intl.dart';
 
 class AddCustomFood extends StatefulWidget {
   final String prefillName;
@@ -35,6 +36,8 @@ class _AddCustomFoodState extends State<AddCustomFood> {
   String calories = '0';
   String caloriesFromFat = '0';
   bool simplifiedView = false;
+  String _selectedMeal = 'ANYTIME'; // Default meal type
+  DateTime _selectedDate = DateTime.now(); // Default date is the current date
 
   @override
   void initState() {
@@ -131,6 +134,8 @@ class _AddCustomFoodState extends State<AddCustomFood> {
                         foodId: widget.foodId,
                         amount: servingSize,
                         unitId: widget.unitId,
+                        mealTypeId: _mealTypeToId(_selectedMeal).toString(),
+                        date: DateFormat('yyyy-MM-dd').format(_selectedDate),
                       );
 
                       if (success) {
@@ -176,5 +181,17 @@ class _AddCustomFoodState extends State<AddCustomFood> {
         ),
       ),
     );
+  }
+
+  int _mealTypeToId(String meal) {
+    switch (meal.toUpperCase()) {
+      case 'BREAKFAST': return 1;
+      case 'MORNING SNACK': return 2;
+      case 'LUNCH': return 3;
+      case 'AFTERNOON SNACK': return 4;
+      case 'DINNER': return 5;
+      case 'EVENING SNACK': return 6;
+      default: return 7; // Default to ANYTIME
+    }
   }
 }

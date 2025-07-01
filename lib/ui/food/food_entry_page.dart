@@ -22,12 +22,13 @@ class FoodEntryPage extends StatefulWidget {
   State<FoodEntryPage> createState() => _FoodEntryPageState();
 }
 
-class _FoodEntryPageState extends State<FoodEntryPage>
-    with SingleTickerProviderStateMixin {
+class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final FitbitService fitbitService = FitbitService();
   String? _cachedAccessToken;
   List<Map<String, String>> customFoods = [];
+  List<Map<String, String>> frequentFoods = [];  // Add your frequent foods data
+  List<Map<String, String>> recentFoods = [];  // Add your recent foods data
   List<Map<String, String>> searchResults = [];
   TextEditingController _searchController = TextEditingController();
   bool _showSearch = false;
@@ -46,6 +47,9 @@ class _FoodEntryPageState extends State<FoodEntryPage>
     });
 
     _fetchCustomFoods();
+    // Add your methods to fetch frequent and recent foods here
+    _fetchFrequentFoods();
+    _fetchRecentFoods();
   }
 
   @override
@@ -66,15 +70,57 @@ class _FoodEntryPageState extends State<FoodEntryPage>
       customFoods.clear();
       customFoods.addAll(foods.map((food) {
         return {
-          'name': food['name'] ?? '',
-          'description': food['description'] ?? '',
-          'calories': food['calories'] ?? '',
-          'foodId': food['foodId'] ?? '',
-          'unitId': food['unitId'] ?? '',
+          'name': food['name']?.toString() ?? '',
+          'description': food['description']?.toString() ?? '',
+          'calories': food['calories']?.toString() ?? '',
+          'foodId': food['foodId']?.toString() ?? '',
+          'unitId': food['unitId']?.toString() ?? '',
         };
       }).toList());
 
       searchResults = customFoods;
+    });
+  }
+
+  void _fetchFrequentFoods() async {
+    if (_cachedAccessToken == null) {
+      await fitbitService.loadAccessToken();
+      _cachedAccessToken = fitbitService.accessToken;
+    }
+    final foods = await fitbitService.getFrequentFoodLogs();
+
+    setState(() {
+      frequentFoods.clear();
+      frequentFoods.addAll(foods.map((food) {
+        return {
+          'name': food['name']?.toString() ?? '',
+          'description': food['description']?.toString() ?? '',
+          'calories': food['calories']?.toString() ?? '',
+          'foodId': food['foodId']?.toString() ?? '',
+          'unitId': food['unitId']?.toString() ?? '',
+        };
+      }).toList());
+    });
+  }
+
+  void _fetchRecentFoods() async {
+    if (_cachedAccessToken == null) {
+      await fitbitService.loadAccessToken();
+      _cachedAccessToken = fitbitService.accessToken;
+    }
+    final foods = await fitbitService.getRecentFoodLogs();
+
+    setState(() {
+      recentFoods.clear();
+      recentFoods.addAll(foods.map((food) {
+        return {
+          'name': food['name']?.toString() ?? '',
+          'description': food['description']?.toString() ?? '',
+          'calories': food['calories']?.toString() ?? '',
+          'foodId': food['foodId']?.toString() ?? '',
+          'unitId': food['unitId']?.toString() ?? '',
+        };
+      }).toList());
     });
   }
 
@@ -96,6 +142,97 @@ class _FoodEntryPageState extends State<FoodEntryPage>
         });
       }
     });
+  }
+
+  Widget _buildFoodList(List<Map<String, String>> foods) {
+    return ListView.builder(
+      itemCount: foods.length,
+      itemBuilder: (context, index) {
+        final food = foods[index];
+        return GestureDetector(
+          onTap: () => _handleFoodTap(food),
+          child: Card(
+            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+            child: ListTile(
+              contentPadding: const EdgeInsets.all(10),
+              title: Text(food['name'] ?? ''),
+              subtitle: Text(food['description'] ?? ''),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCustomTab() {
+    return Column(
+      children: [
+        if (_showSearch)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                hintText: 'Search food...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+        if (widget.showOnlyCustomTab)
+          ListTile(
+            leading: const Icon(Icons.add, color: Colors.pink),
+            title: const Text("ADD CUSTOM FOOD", style: TextStyle(color: Colors.pink)),
+            onTap: _addCustomFood,
+          ),
+        Expanded(child: _buildFoodList(searchResults)), // Show search results here
+      ],
+    );
+  }
+
+  Widget _buildFrequentTab() {
+    return Column(
+      children: [
+        if (_showSearch)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                hintText: 'Search food...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+        Expanded(
+          child: _showSearch
+              ? _buildFoodList(searchResults)  // Show search results when searching
+              : _buildFoodList(frequentFoods), // Show frequent foods if not searching
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecentTab() {
+    return Column(
+      children: [
+        if (_showSearch)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                hintText: 'Search food...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+        Expanded(
+          child: _showSearch
+              ? _buildFoodList(searchResults)  // Show search results when searching
+              : _buildFoodList(recentFoods), // Show recent foods if not searching
+        ),
+      ],
+    );
   }
 
   void _addCustomFood() async {
@@ -120,12 +257,14 @@ class _FoodEntryPageState extends State<FoodEntryPage>
             mealType: widget.mealType ?? '',
             foodName: food['name'] ?? '',
             calories: (food['calories'] ?? '0').toString(),
+            foodId: food['foodId'] ?? '',
+            unitId: food['unitId'] ?? '304',
           ),
         ),
       );
 
       if (result == 'logged') {
-        Navigator.pop(context);
+        Navigator.pop(context, 'logged');
       }
     } else {
       final result = await Navigator.push(
@@ -144,43 +283,9 @@ class _FoodEntryPageState extends State<FoodEntryPage>
       );
 
       if (result == 'logged') {
-        Navigator.pop(context);
+        Navigator.pop(context, 'logged');
       }
     }
-  }
-
-  Widget _buildCustomTab() {
-    final displayedFoods = _searchController.text.isEmpty ? customFoods : searchResults;
-
-    return Column(
-      children: [
-        if (widget.showOnlyCustomTab)
-          ListTile(
-            leading: const Icon(Icons.add, color: Colors.pink),
-            title: const Text("ADD CUSTOM FOOD", style: TextStyle(color: Colors.pink)),
-            onTap: _addCustomFood,
-          ),
-        Expanded(
-          child: ListView.builder(
-            itemCount: displayedFoods.length,
-            itemBuilder: (context, index) {
-              final food = displayedFoods[index];
-              return GestureDetector(
-                onTap: () => _handleFoodTap(food),
-                child: Card(
-                  margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(10),
-                    title: Text(food['name'] ?? ''),
-                    subtitle: Text(food['description'] ?? ''),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
   }
 
   @override
@@ -189,7 +294,25 @@ class _FoodEntryPageState extends State<FoodEntryPage>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.mealType ?? (widget.isLogOnly ? "Select Food" : "Log Food")),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(widget.mealType ?? (widget.isLogOnly ? "Select Food" : "Log Food")),
+            ),
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () {
+                setState(() {
+                  _showSearch = !_showSearch;
+                  if (!_showSearch) {
+                    _searchController.clear();
+                    searchResults = customFoods;
+                  }
+                });
+              },
+            ),
+          ],
+        ),
         bottom: showTabs
             ? TabBar(
           controller: _tabController,
@@ -205,8 +328,8 @@ class _FoodEntryPageState extends State<FoodEntryPage>
           ? TabBarView(
         controller: _tabController,
         children: [
-          FrequentFoodTab(onFoodTap: _handleFoodTap),
-          RecentFoodTab(onFoodTap: _handleFoodTap),
+          _buildFrequentTab(),
+          _buildRecentTab(),
           _buildCustomTab(),
         ],
       )

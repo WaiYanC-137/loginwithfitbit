@@ -522,10 +522,14 @@ Future<List<Activity>> fetchActivityLog(
     return [];
   }
 
-  Future<bool> logFood({required String foodId, required String amount, required String unitId}) async {
+  Future<bool> logFood({
+    required String foodId,
+    required String amount,
+    required String unitId,
+    required String mealTypeId, // Add this parameter
+    required String date,       // Add this parameter
+  }) async {
     if (accessToken == null) return false;
-
-    print('Logging food: foodId=$foodId, amount=$amount, unitId=$unitId');  // Add log to debug
 
     final response = await http.post(
       Uri.parse('https://api.fitbit.com/1/user/-/foods/log.json'),
@@ -535,14 +539,13 @@ Future<List<Activity>> fetchActivityLog(
       },
       body: {
         'foodId': foodId,
-        'mealTypeId': '7', // Default meal type (7 = Anytime), adjust if needed
+        'mealTypeId': mealTypeId, // Send the mealTypeId parameter
         'amount': amount,
-        'unitId': unitId,  // Use the dynamic unitId here
-        'date': DateTime.now().toIso8601String().split('T').first,
+        'unitId': unitId,
+        'date': date,
       },
     );
 
-    print('Log Food Response: ${response.statusCode} - ${response.body}');  // Log response
     return response.statusCode == 201 || response.statusCode == 200;
   }
 }

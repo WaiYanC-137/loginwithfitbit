@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:loginwithfitbit/services/fitbit_service.dart';
 
 class QuickLogPage extends StatefulWidget {
   final String mealType;
   final String foodName;
   final String calories;
+  final String foodId;
+  final String unitId;
 
   const QuickLogPage({
     super.key,
     required this.mealType,
     required this.foodName,
     required this.calories,
+    required this.foodId,
+    required this.unitId,
   });
 
   @override
@@ -20,11 +25,13 @@ class QuickLogPage extends StatefulWidget {
 class _QuickLogPageState extends State<QuickLogPage> {
   String _selectedMeal = '';
   DateTime _selectedDate = DateTime.now();
+  final FitbitService _fitbitService = FitbitService();
 
   @override
   void initState() {
     super.initState();
     _selectedMeal = widget.mealType;
+    _fitbitService.loadAccessToken();
   }
 
   Future<void> _pickDate() async {
@@ -34,12 +41,35 @@ class _QuickLogPageState extends State<QuickLogPage> {
       firstDate: DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now(),
     );
-
     if (picked != null) {
       setState(() {
         _selectedDate = picked;
       });
     }
+  }
+
+  int _mealTypeToId(String meal) {
+    switch (meal.toUpperCase()) {
+      case 'BREAKFAST': return 1;
+      case 'MORNING SNACK': return 2;
+      case 'LUNCH': return 3;
+      case 'AFTERNOON SNACK': return 4;
+      case 'DINNER': return 5;
+      case 'EVENING SNACK': return 6;
+      default: return 7; // ANYTIME
+    }
+  }
+
+  Future<bool> _logFood() async {
+    final success = await _fitbitService.logFood(
+      foodId: widget.foodId,
+      amount: '1',
+      unitId: widget.unitId,
+      mealTypeId: _mealTypeToId(_selectedMeal).toString(),
+      date: DateFormat('yyyy-MM-dd').format(_selectedDate),
+    );
+
+    return success;
   }
 
   Widget _mealOption(String label) {
@@ -49,11 +79,7 @@ class _QuickLogPageState extends State<QuickLogPage> {
           Radio<String>(
             value: label,
             groupValue: _selectedMeal,
-            onChanged: (value) {
-              setState(() {
-                _selectedMeal = value!;
-              });
-            },
+            onChanged: (value) => setState(() => _selectedMeal = value!),
           ),
           Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
         ],
@@ -64,7 +90,7 @@ class _QuickLogPageState extends State<QuickLogPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add food')),
+      appBar: AppBar(title: const Text('Add Food')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
@@ -72,22 +98,7 @@ class _QuickLogPageState extends State<QuickLogPage> {
             Text(widget.foodName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             Text(widget.calories.isNotEmpty ? '${widget.calories} cal' : '', style: const TextStyle(color: Colors.grey)),
             const SizedBox(height: 10),
-            Row(
-              children: const [
-                Text('NUTRITION FACTS', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-                Spacer(),
-                Text('EDIT CUSTOM FOOD', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-              ],
-            ),
             const Divider(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Serving size 1'),
-                Text('${widget.calories} cal'),
-              ],
-            ),
-            const SizedBox(height: 20),
             const Text('Meal & Snacks Time', style: TextStyle(fontSize: 16)),
             Wrap(
               runSpacing: 8,
@@ -119,8 +130,17 @@ class _QuickLogPageState extends State<QuickLogPage> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context, 'logged');
+                    onPressed: () async {
+                      final success = await _logFood();
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Logged, add more if needed')),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Failed to log food')),
+                        );
+                      }
                     },
                     child: const Text('LOG & ADD MORE'),
                   ),
@@ -129,8 +149,15 @@ class _QuickLogPageState extends State<QuickLogPage> {
                 Expanded(
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.pink),
-                    onPressed: () {
-                      Navigator.pop(context, 'logged');
+                    onPressed: () async {
+                      final success = await _logFood();
+                      if (success) {
+                        Navigator.pop(context, 'logged');
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Failed to log food')),
+                        );
+                      }
                     },
                     child: const Text('LOG THIS'),
                   ),
