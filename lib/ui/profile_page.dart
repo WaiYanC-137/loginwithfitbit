@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:loginwithfitbit/model/activity.dart';
 import 'package:loginwithfitbit/ui/activities/activity_selection_type.dart';
 import 'package:loginwithfitbit/ui/add_entry_bottom_sheet.dart';
+import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../services/fitbit_service.dart';
 import 'activity_selection_page.dart';
 import 'package:loginwithfitbit/ui/food/food_entry_page.dart';
@@ -20,7 +21,9 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   String _status = 'Loading profile...';
   Map<String, dynamic>? _profile;
-  List<Activity> _activities = [];
+  List<Activity> _activities = []; // Stores the fetched activity data
+  late final int completed=0;
+  late final int total=0;
 
   @override
   void initState() {
@@ -102,7 +105,8 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final beginningOfThisWeek = now.subtract(Duration(days: now.weekday - 1));
-    final weekDates = List.generate(7, (i) => beginningOfThisWeek.add(Duration(days: i)));
+    final weekDates =List.generate(7, (i) => beginningOfThisWeek.add(Duration(days: i)));
+    final double percent = (total == 0) ? 0 : completed / total;
 
     return Scaffold(
       appBar: AppBar(
@@ -153,29 +157,149 @@ class _ProfilePageState extends State<ProfilePage> {
                     final isToday = DateUtils.dateOnly(date) == DateUtils.dateOnly(now);
                     final bool isBeforeToday = date.isBefore(DateTime(now.year, now.month, now.day));
 
-                    return Card(
-                      elevation: 2,
-                      color: isToday ? const Color.fromARGB(255, 50, 27, 226) : Colors.white,
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(
-                          color: isBeforeToday ? const Color.fromARGB(255, 94, 236, 175) : Colors.transparent,
-                          width: 1.5,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
+                  return Card(
+                    elevation: 2,  
+                    color: isToday ?const Color.fromARGB(255, 50, 27, 226) : Colors.white,
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(
+                        color: isBeforeToday ?const Color.fromARGB(255, 94, 236, 175) : Colors.transparent,                    // <-- border here
+                        width: 1.5,                              // thickness in logical pixels
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: DayChip(date: date, isToday: isToday),
-                      ),
-                    );
-                  },
-                ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Padding(                       // breathing room for the chip
+                      padding: const EdgeInsets.all(4),
+                      child: DayChip(date: date, isToday: isToday),
+                    ),
+                  );
+                },
               ),
-              const SizedBox(height: 16),
-              ..._mealCards,
-            ],
+            ),
+            const SizedBox(height: 16),
+            //add Card View Like Food
+            Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Card(
+            elevation: 3,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: ListTile(
+              leading: const Icon(Icons.star, size: 32, color: Color(0xFF6759FF)),
+              title: const Text('Weekly Goal',
+                  style:
+                      TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+              subtitle: const Text('You’ve completed 4 of 5 workouts'),
+              trailing: ElevatedButton(
+                onPressed: () => debugPrint('See details'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6C63FF),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('View'),
+              ),
+            ),
           ),
         ),
+            const SizedBox(height: 16),
+            ..._mealCards,
+            const SizedBox(height: 16),
+            //add Card View Like Food
+            Container(
+            height: 130,
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 20,vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const[BoxShadow(
+                offset: Offset(0, 4),
+                blurRadius: 12,
+                color: Colors.black12,
+              )
+            ] 
+            ),
+            child: Row(
+              children: [
+                // ---------- Title & subtitle ----------
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Food',
+                          style:
+                              TextStyle(fontSize: 15)),
+                        const SizedBox(height: 10), // <-- Adds vertical space between 'Food' and '0 cal'
+                      Text('0 cal',
+                          style: 
+                          TextStyle(fontSize: 25)),
+                      Text('Today . 1,927 cal below target',
+                          style: 
+                          TextStyle(fontSize: 15)
+                          ),
+                    ],
+                  ),
+                ),
+                // ---------- Circular progress “ring” ----------
+                CircularPercentIndicator(
+      // --- geometry ---
+      radius: 36,                     // a bit larger
+      lineWidth: 5,
+      backgroundWidth: 5,
+      startAngle: 180,                // start at the top
+      circularStrokeCap: CircularStrokeCap.round,
+
+      // --- progress & animation ---
+      percent: percent,
+      animation: true,
+      animationDuration: 1200,
+      curve: Curves.easeOutCubic,
+      linearGradient: const LinearGradient(
+        colors: [Color(0xFF6759FF), Color(0xFFBB2F81)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ),
+      rotateLinearGradient: true,     // let the gradient sweep
+      backgroundColor: const Color(0xFFE5E5E5),
+
+      // --- polish ---
+      
+
+      // --- what lives in the centre ---
+      center: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(                                   // white badge + shadow
+            width: 50,
+            height: 50,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  blurRadius: 4,
+                  offset: Offset(0, 1),
+                  color: Colors.black12,
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.star, size: 28, color: Color(0xFF6759FF)),
+        ],
+      ),
+    ),
+          ],
+        ),
+      ),
+  
+
+          ],
+        ),
+        
+        ) // subtle bluish background
+        
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddEntryBottomSheet,
