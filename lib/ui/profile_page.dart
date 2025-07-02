@@ -7,6 +7,8 @@ import 'package:loginwithfitbit/ui/add_entry_bottom_sheet.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../services/fitbit_service.dart';
 import 'activity_selection_page.dart';
+import 'dart:math' as math;
+
 import 'package:loginwithfitbit/ui/food/food_entry_page.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -24,6 +26,33 @@ class _ProfilePageState extends State<ProfilePage> {
   List<Activity> _activities = []; // Stores the fetched activity data
   late final int completed=0;
   late final int total=0;
+  final List<Map<String, dynamic>> healthData = [
+    {
+      'title': 'Food',
+      'value': '0 cal',
+      'subText': 'Today · 1,841 cal below target',
+      'percent': 0.2,
+      'icon': Icons.local_dining,
+      'iconColor': Colors.blue,
+    },
+    {
+      'title': 'Sleep',
+      'value': '6.2 hrs',
+      'subText': 'Today · 1.8 hrs below target',
+      'percent': 0.7,
+      'icon': Icons.bedtime,
+      'iconColor': Colors.deepPurple,
+    },
+    {
+      'title': 'Water',
+      'value': '500 ml',
+      'subText': 'Today · 1.5 L below target',
+      'percent': 0.35,
+      'icon': Icons.water_drop,
+      'iconColor': Colors.lightBlue,
+    },
+  ];
+
 
   @override
   void initState() {
@@ -158,7 +187,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     final bool isBeforeToday = date.isBefore(DateTime(now.year, now.month, now.day));
 
                   return Card(
-                    elevation: 2,  
+                    elevation: 2,
                     color: isToday ?const Color.fromARGB(255, 50, 27, 226) : Colors.white,
                     shape: RoundedRectangleBorder(
                       side: BorderSide(
@@ -207,99 +236,31 @@ class _ProfilePageState extends State<ProfilePage> {
             ..._mealCards,
             const SizedBox(height: 16),
             //add Card View Like Food
-            Container(
-            height: 130,
-            margin: const EdgeInsets.symmetric(horizontal: 20),
-            padding: const EdgeInsets.symmetric(horizontal: 20,vertical: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: const[BoxShadow(
-                offset: Offset(0, 4),
-                blurRadius: 12,
-                color: Colors.black12,
-              )
-            ] 
-            ),
-            child: Row(
-              children: [
-                // ---------- Title & subtitle ----------
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Food',
-                          style:
-                              TextStyle(fontSize: 15)),
-                        const SizedBox(height: 10), // <-- Adds vertical space between 'Food' and '0 cal'
-                      Text('0 cal',
-                          style: 
-                          TextStyle(fontSize: 25)),
-                      Text('Today . 1,927 cal below target',
-                          style: 
-                          TextStyle(fontSize: 15)
-                          ),
-                    ],
-                  ),
-                ),
-                // ---------- Circular progress “ring” ----------
-                CircularPercentIndicator(
-      // --- geometry ---
-      radius: 36,                     // a bit larger
-      lineWidth: 5,
-      backgroundWidth: 5,
-      startAngle: 180,                // start at the top
-      circularStrokeCap: CircularStrokeCap.round,
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: healthData.length,
+                itemBuilder: (context, index) {
+                  final item = healthData[index];
+                  return HealthCard(
+                    title: item['title'],
+                    value: item['value'],
+                    subText: item['subText'],
+                    percent: item['percent'],
+                    icon: item['icon'],
+                    iconColor: item['iconColor'],
+                  );
+                },
+              ),
 
-      // --- progress & animation ---
-      percent: percent,
-      animation: true,
-      animationDuration: 1200,
-      curve: Curves.easeOutCubic,
-      linearGradient: const LinearGradient(
-        colors: [Color(0xFF6759FF), Color(0xFFBB2F81)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ),
-      rotateLinearGradient: true,     // let the gradient sweep
-      backgroundColor: const Color(0xFFE5E5E5),
 
-      // --- polish ---
-      
 
-      // --- what lives in the centre ---
-      center: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(                                   // white badge + shadow
-            width: 50,
-            height: 50,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  blurRadius: 4,
-                  offset: Offset(0, 1),
-                  color: Colors.black12,
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.star, size: 28, color: Color(0xFF6759FF)),
-        ],
-      ),
-    ),
-          ],
-        ),
-      ),
-  
 
           ],
         ),
-        
+
         ) // subtle bluish background
-        
+
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddEntryBottomSheet,
@@ -472,4 +433,161 @@ class MealCard extends StatelessWidget {
       ),
     );
   }
+
+}
+
+class HealthCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final String subText;
+  final double percent;
+  final IconData icon;
+  final Color iconColor;
+
+  const HealthCard({
+    super.key,
+    required this.title,
+    required this.value,
+    required this.subText,
+    required this.percent,
+    required this.icon,
+    required this.iconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
+          BoxShadow(
+            blurRadius: 8,
+            offset: Offset(0, 4),
+            color: Colors.black12,
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Left side
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(fontSize: 14, color: Colors.black54)),
+                const SizedBox(height: 4),
+                Text(value,
+                    style: const TextStyle(
+                        fontSize: 26, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(subText,
+                    style: const TextStyle(fontSize: 13, color: Colors.grey)),
+              ],
+            ),
+          ),
+          // Right side: Ring with icon
+          ThreeQuarterArc(
+            percent: percent,
+            color: iconColor,
+            icon: icon,
+          ),
+
+        ],
+      ),
+    );
+  }
+}
+class ThreeQuarterArc extends StatelessWidget {
+  final double percent;
+  final Color color;
+  final IconData icon;
+
+  const ThreeQuarterArc({
+    super.key,
+    required this.percent,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _ArcPainter(percent: percent, color: color),
+      child: SizedBox(
+        width: 70,
+        height: 70,
+        child: Center(
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  blurRadius: 4,
+                  offset: Offset(0, 1),
+                  color: Colors.black12,
+                ),
+              ],
+            ),
+            child: Icon(icon, size: 24, color: color),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ArcPainter extends CustomPainter {
+  final double percent;
+  final Color color;
+
+  _ArcPainter({required this.percent, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokeWidth = 6.0;
+    final radius = size.width / 2;
+
+    final startAngle = 5 * math.pi / 6; // 150°
+    final sweepAngle = 4 * math.pi / 3 * percent; // 240°
+
+    final paintBg = Paint()
+      ..color = const Color(0xFFE5E5E5)
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final paintFg = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final center = Offset(size.width / 2, size.height / 2);
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
+      startAngle,
+      4 * math.pi / 3, // full background arc (240°)
+      false,
+      paintBg,
+    );
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
+      startAngle,
+      sweepAngle,
+      false,
+      paintFg,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
