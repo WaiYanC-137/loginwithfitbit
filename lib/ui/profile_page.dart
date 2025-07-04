@@ -8,6 +8,8 @@ import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../services/fitbit_service.dart';
 import 'activity_selection_page.dart';
 import 'dart:math' as math;
+import 'package:loginwithfitbit/ui/user_profile_page.dart';
+
 
 import 'package:loginwithfitbit/ui/food/food_entry_page.dart';
 
@@ -21,6 +23,21 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  int _selectedIndex = 0;
+
+  void _onItemTapped(int index) {
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const UserProfilePage()),
+      );
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
+  }
+
   String _status = 'Loading profile...';
   Map<String, dynamic>? _profile;
   List<Activity> _activities = []; // Stores the fetched activity data
@@ -267,6 +284,21 @@ class _ProfilePageState extends State<ProfilePage> {
         tooltip: 'Add Favorite Activity',
         child: const Icon(Icons.add),
       ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+      ),
+
     );
   }
 

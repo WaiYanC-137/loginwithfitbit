@@ -548,4 +548,26 @@ Future<List<Activity>> fetchActivityLog(
 
     return response.statusCode == 201 || response.statusCode == 200;
   }
+
+
+  Future<bool> createFoodGoal(int calories) async {
+    if (accessToken == null) return false;
+
+    final url = Uri.parse('https://api.fitbit.com/1/user/-/foods/log/goal.json');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: {
+        'calories': calories.toString(),
+      },
+    );
+
+    print("Goal Response: ${response.statusCode} - ${response.body}");
+    return response.statusCode == 200;
+  }
+
 }
