@@ -26,8 +26,8 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
   final FitbitService fitbitService = FitbitService();
   String? _cachedAccessToken;
   List<Map<String, String>> customFoods = [];
-  List<Map<String, String>> frequentFoods = [];  // Add your frequent foods data
-  List<Map<String, String>> recentFoods = [];  // Add your recent foods data
+  List<Map<String, String>> frequentFoods = [];
+  List<Map<String, String>> recentFoods = [];
   List<Map<String, String>> searchResults = [];
   TextEditingController _searchController = TextEditingController();
   bool _showSearch = false;
@@ -46,10 +46,7 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
     });
 
     _fetchCustomFoods();
-    // Add your methods to fetch frequent and recent foods here
     _fetchFrequentFoods();
-    print("Frequent Food s...");
-    print(frequentFoods);
     _fetchRecentFoods();
   }
 
@@ -61,13 +58,11 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
   }
 
   void _fetchCustomFoods() async {
-  if (_cachedAccessToken == null) {
-    await fitbitService.loadAccessToken();;
-    _cachedAccessToken = fitbitService.accessToken;
-  }
+    if (_cachedAccessToken == null) {
+      await fitbitService.loadAccessToken();
+      _cachedAccessToken = fitbitService.accessToken;
+    }
     final foods = await fitbitService.getCustomFoods();
-    print("Custom Foods.....");
-    print(foods);
     setState(() {
       customFoods.clear();
       customFoods.addAll(foods.map((food) {
@@ -93,15 +88,12 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
     setState(() {
       frequentFoods.clear();
       frequentFoods.addAll(foods.map((food) {
-        final units = (food['units'] as List<dynamic>? ?? [])
-          .join(',');
         return {
           'name': food['name']?.toString() ?? '',
           'description': food['description']?.toString() ?? '',
           'calories': food['calories']?.toString() ?? '',
           'foodId': food['foodId']?.toString() ?? '',
           'unitId': food['unit']['id']?.toString() ?? '',
-
         };
       }).toList());
     });
@@ -187,7 +179,9 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
             title: const Text("ADD CUSTOM FOOD", style: TextStyle(color: Colors.pink)),
             onTap: _addCustomFood,
           ),
-        Expanded(child: _buildFoodList(searchResults)), // Show search results here
+        Expanded(
+          child: _buildFoodList(searchResults),
+        ),
       ],
     );
   }
@@ -207,9 +201,7 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
             ),
           ),
         Expanded(
-          child: _showSearch
-              ? _buildFoodList(searchResults)  // Show search results when searching
-              : _buildFoodList(frequentFoods), // Show frequent foods if not searching
+          child: _showSearch ? _buildFoodList(searchResults) : _buildFoodList(frequentFoods),
         ),
       ],
     );
@@ -230,9 +222,7 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
             ),
           ),
         Expanded(
-          child: _showSearch
-              ? _buildFoodList(searchResults)  // Show search results when searching
-              : _buildFoodList(recentFoods), // Show recent foods if not searching
+          child: _showSearch ? _buildFoodList(searchResults) : _buildFoodList(recentFoods),
         ),
       ],
     );

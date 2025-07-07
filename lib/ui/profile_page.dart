@@ -24,6 +24,9 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   int _selectedIndex = 0;
+  int? calorieGoal;
+  int consumedCalories = 0;
+
 
   void _onItemTapped(int index) {
     if (index == 1) {
@@ -41,8 +44,8 @@ class _ProfilePageState extends State<ProfilePage> {
   String _status = 'Loading profile...';
   Map<String, dynamic>? _profile;
   List<Activity> _activities = []; // Stores the fetched activity data
-  late final int completed=0;
-  late final int total=0;
+  int completed=0;
+  int total=0;
   final List<Map<String, dynamic>> healthData = [
     {
       'title': 'Food',
@@ -78,16 +81,89 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _loadProfile() async {
-    final profile = await widget.fitbitService.getProfile();
-    setState(() {
-      if (profile != null) {
-        _profile = profile;
-        _status = 'Profile loaded';
-      } else {
-        _status = 'Failed to load profile';
+    try {
+      print("Loading profile...");
+
+      final profile = await widget.fitbitService.getProfile();
+      final foodGoal = await widget.fitbitService.getFoodGoal();
+      final recentFoods = await widget.fitbitService.getRecentFoodLogs();
+
+      print("Profile: $profile");
+      print("Food Goal: $foodGoal");
+      print("Recent Foods: $recentFoods");
+
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      int totalCalories = 0;
+
+      for (var food in recentFoods) {
+        // Some APIs return 'dateLastEaten' not 'date', confirm your JSON structure
+        final dateString = food['date'] ?? food['dateLastEaten'];
+
+        if (dateString == null) continue; // Skip if no date
+
+        try {
+          final foodDate = DateTime.parse(dateString);
+
+          if (foodDate.year == today.year && foodDate.month == today.month && foodDate.day == today.day) {
+            final cals = int.tryParse(food['calories']?.toString() ?? '0') ?? 0;
+            totalCalories += cals;
+          }
+        } catch (e) {
+          print("Skipping invalid date: $dateString");
+        }
       }
-    });
+
+      setState(() {
+        _profile = profile;
+        _status = profile != null ? 'Profile loaded' : 'Failed to load profile';
+
+        calorieGoal = foodGoal ?? 0;
+        consumedCalories = totalCalories;
+
+        // Update healthData[0] safely
+        healthData[0]['value'] = '$consumedCalories cal';
+
+        if (calorieGoal! > 0) {
+          double percent = consumedCalories / calorieGoal!;
+          percent = percent.clamp(0, 1);
+
+          int remaining = calorieGoal! - consumedCalories;
+
+          healthData[0]['percent'] = percent;
+          healthData[0]['subText'] = remaining > 0
+              ? 'Today · $remaining cal remaining'
+              : 'Goal achieved!';
+
+          print('✅ Consumed Calories Today: $consumedCalories');
+          print('✅ Food Goal: $calorieGoal');
+          print('✅ Remaining Calories: $remaining');
+        } else {
+          healthData[0]['subText'] = 'Goal not set';
+          print('⚠️ Food Goal not set, cannot calculate remaining calories.');
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _status = 'Error loading profile: $e';
+      });
+      print('❌ Error loading profile: $e');
+    }
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   Future<List<Activity>> _fetchActivityLog() async {
     DateTime now = DateTime.now();

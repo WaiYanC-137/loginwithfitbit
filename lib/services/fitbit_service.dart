@@ -606,5 +606,27 @@ class FitbitService {
     print("Goal Response: ${response.statusCode} - ${response.body}");
     return response.statusCode == 200;
   }
+  Future<int?> getFoodGoal() async {
+    if (accessToken == null) return null;
+
+    final response = await http.get(
+      Uri.parse('https://api.fitbit.com/1/user/-/foods/log/goal.json'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final calories = data['goals']?['calories'];
+      if (calories != null) {
+        return calories is int ? calories : int.tryParse(calories.toString());
+      }
+    }
+
+    print('Failed to fetch food goal: ${response.body}');
+    return null;
+  }
+
 
 }
