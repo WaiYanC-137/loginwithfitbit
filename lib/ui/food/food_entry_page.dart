@@ -17,7 +17,6 @@ class FoodEntryPage extends StatefulWidget {
     this.mealType,
     this.showOnlyCustomTab = false,
   });
-
   @override
   State<FoodEntryPage> createState() => _FoodEntryPageState();
 }
@@ -49,6 +48,8 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
     _fetchCustomFoods();
     // Add your methods to fetch frequent and recent foods here
     _fetchFrequentFoods();
+    print("Frequent Food s...");
+    print(frequentFoods);
     _fetchRecentFoods();
   }
 
@@ -60,12 +61,13 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
   }
 
   void _fetchCustomFoods() async {
-    if (_cachedAccessToken == null) {
-      await fitbitService.loadAccessToken();
-      _cachedAccessToken = fitbitService.accessToken;
-    }
+  if (_cachedAccessToken == null) {
+    await fitbitService.loadAccessToken();;
+    _cachedAccessToken = fitbitService.accessToken;
+  }
     final foods = await fitbitService.getCustomFoods();
-
+    print("Custom Foods.....");
+    print(foods);
     setState(() {
       customFoods.clear();
       customFoods.addAll(foods.map((food) {
@@ -88,16 +90,18 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
       _cachedAccessToken = fitbitService.accessToken;
     }
     final foods = await fitbitService.getFrequentFoodLogs();
-
     setState(() {
       frequentFoods.clear();
       frequentFoods.addAll(foods.map((food) {
+        final units = (food['units'] as List<dynamic>? ?? [])
+          .join(',');
         return {
           'name': food['name']?.toString() ?? '',
           'description': food['description']?.toString() ?? '',
           'calories': food['calories']?.toString() ?? '',
           'foodId': food['foodId']?.toString() ?? '',
-          'unitId': food['unitId']?.toString() ?? '',
+          'unitId': food['unit']['id']?.toString() ?? '',
+
         };
       }).toList());
     });
@@ -109,7 +113,6 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
       _cachedAccessToken = fitbitService.accessToken;
     }
     final foods = await fitbitService.getRecentFoodLogs();
-
     setState(() {
       recentFoods.clear();
       recentFoods.addAll(foods.map((food) {
@@ -118,7 +121,7 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
           'description': food['description']?.toString() ?? '',
           'calories': food['calories']?.toString() ?? '',
           'foodId': food['foodId']?.toString() ?? '',
-          'unitId': food['unitId']?.toString() ?? '',
+          'unitId': food['unit']['id']?.toString() ?? '',
         };
       }).toList());
     });

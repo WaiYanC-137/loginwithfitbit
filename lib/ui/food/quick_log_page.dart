@@ -23,15 +23,37 @@ class QuickLogPage extends StatefulWidget {
 }
 
 class _QuickLogPageState extends State<QuickLogPage> {
+
+  
   String _selectedMeal = '';
   DateTime _selectedDate = DateTime.now();
   final FitbitService _fitbitService = FitbitService();
+  List<Map<String, String>> _foodUnits = [];
+  String? _servingUnitId;  // store the selected id (or name – your choice)
+  String? _cachedAccessToken;
+  late final List<int> _allowedUnitIds;
+  late final Set<int> _allowedIdSet;
+  late bool   _mealLocked;  
+
 
   @override
   void initState() {
     super.initState();
-    _selectedMeal = widget.mealType;
-    _fitbitService.loadAccessToken();
+    _allowedUnitIds = widget.unitId
+      .split(',')
+      .where((s) => s.trim().isNotEmpty) // safety
+      .map((s) => int.parse(s.trim()))
+      .toList();
+
+  // If you’ll do a lot of “contains” checks, keep a Set as well:
+    _allowedIdSet = _allowedUnitIds.toSet();
+    _fetchFoodUnit();
+    _selectedMeal = widget.mealType.isNotEmpty == true
+      ? widget.mealType          // e.g. 'BREAKFAST'
+      : 'ANYTIME';    
+        _mealLocked  = widget.mealType.isNotEmpty == true;
+       _fitbitService.loadAccessToken();
+
   }
 
   Future<void> _pickDate() async {
@@ -64,28 +86,62 @@ class _QuickLogPageState extends State<QuickLogPage> {
     final success = await _fitbitService.logFood(
       foodId: widget.foodId,
       amount: '1',
-      unitId: widget.unitId,
+      unitId: _servingUnitId.toString() ,
       mealTypeId: _mealTypeToId(_selectedMeal).toString(),
       date: DateFormat('yyyy-MM-dd').format(_selectedDate),
     );
-
     return success;
   }
 
-  Widget _mealOption(String label) {
-    return Expanded(
-      child: Row(
-        children: [
-          Radio<String>(
-            value: label,
-            groupValue: _selectedMeal,
-            onChanged: (value) => setState(() => _selectedMeal = value!),
-          ),
-          Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
-        ],
+Widget _mealOption(String label) {
+  final bool disabled = _mealLocked;   // lock all radios once preset
+
+  return Expanded(
+    child: Opacity(                     // grey‑out if locked & not selected
+      opacity: disabled && label != _selectedMeal ? 0.4 : 1,
+      child: IgnorePointer(             // ignore taps when locked
+        ignoring: disabled,
+        child: Row(
+          children: [
+            Radio<String>(
+              value: label,
+              groupValue: _selectedMeal,
+              onChanged: (value) =>
+                  setState(() => _selectedMeal = value!), // only runs if unlocked
+            ),
+            Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
+          ],
+        ),
       ),
-    );
+    ),
+  );
+}
+  void _fetchFoodUnit() async {
+    if (_cachedAccessToken == null) {
+    await _fitbitService.loadAccessToken();
+    _cachedAccessToken = _fitbitService.accessToken;
   }
+  final units = await _fitbitService.getFoodUnit();
+  setState(() {
+    _foodUnits = units
+        .map((u) => {
+              'id':    u['id']?.toString() ?? '',
+              'name':  u['name']?.toString() ?? '',
+              'plural': u['plural']?.toString() ?? '',
+            })
+         .where((u) =>
+              u['id']!.isNotEmpty && _allowedIdSet.contains(int.parse(u['id']!))) // Filter by allowed IDs   
+        .toList();
+ 
+       // Sort the list by 'name' in ascending order
+      _foodUnits.sort((a, b) => (a['name'] ?? '').compareTo(b['name'] ?? ''));
+    // pick a sensible default once the list arrives
+    if (_foodUnits.isNotEmpty && _servingUnitId == null) {
+      _servingUnitId = _foodUnits.first['id'];
+    }
+  });
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -125,6 +181,35 @@ class _QuickLogPageState extends State<QuickLogPage> {
                 ),
               ],
             ),
+            const SizedBox(height: 30),
+             Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _servingUnitId,
+                      isExpanded: true,                    // keeps long names from ellipsising
+                      decoration: const InputDecoration(
+                        labelText: 'Serving unit',
+                        border: OutlineInputBorder(),
+                      ),
+
+                      // ─── handle changes ────────────────────────────────────────────────
+                      onChanged: (String? newValue) {
+                        setState(() => _servingUnitId = newValue);
+                      },
+                      onSaved:   (String? value) => _servingUnitId = value,
+
+                      // ─── build items from the list you fetched ────────────────────────
+                      items: _foodUnits.map((unit) {
+                        final id   = unit['id']!;
+                        final name = unit['plural']?.isNotEmpty == true
+                            ? unit['plural']!
+                            : unit['name']!;               // show plural if you have it
+                        return DropdownMenuItem<String>(
+                          value: id,                       // what gets written to _servingUnitId
+                          child: Text(name),
+                        );
+                      }).toList(),
+                    ),
+                  ),
             const SizedBox(height: 30),
             Row(
               children: [

@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/gestures.dart';
 import 'package:http/http.dart' as http;
 import 'package:loginwithfitbit/model/activity.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -211,7 +213,7 @@ class FitbitService {
   }
   print('Activities error: ${response.body}');
   return [];
-}
+ } 
 
   //getAllActivitiesFromFitbitDatabase
   Future<List<Activity>> getAllActivitiesTypes() async {
@@ -242,7 +244,7 @@ class FitbitService {
     // Catch and rethrow the error to be handled in the UI
     throw Exception('Failed to fetch activities: $e');
   }
-}
+ }
 
   Future<List<Map<String, dynamic>>> getRecentFoodLogs() async {
     if (accessToken == null) return [];
@@ -282,7 +284,7 @@ class FitbitService {
     print('Frequent foods error: ${response.body}');
     return [];
   }
-Future<Activity> createActivityLog({
+  Future<Activity> createActivityLog({
     required String activityId,
     required String manualCalories,
     required String startTime,        // HH:mm format
@@ -321,9 +323,9 @@ Future<Activity> createActivityLog({
       throw Exception('API response missing "activityLog" key or it\'s not a Map: ${response.body}');
   }
   
-}
+ }
 
-Future<List<Activity>> fetchActivityLog(
+  Future<List<Activity>> fetchActivityLog(
     String afterDate,
     String sort,
     String offset,
@@ -447,33 +449,68 @@ Future<List<Activity>> fetchActivityLog(
 
   /// Fetch custom foods using stored foodIds
   Future<List<Map<String, String>>> getCustomFoods() async {
+  if (accessToken == null) return [];
+
+  final ids   = await _loadCustomFoodIds();
+  final foods = <Map<String, String>>[];        // 👈 list that we’ll return
+
+  for (final id in ids) {
+    final response = await http.get(
+      Uri.parse('https://api.fitbit.com/1/foods/$id.json'),
+      headers: {'Authorization': 'Bearer $accessToken'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body)['food'];
+
+      // Collect all unitIds from servings
+      final unitIds = (data['servings'] as List<dynamic>? ?? [])
+          .map((s) => (s['unitId'] ?? '').toString())
+          .join(',');
+
+      foods.add({
+        'name'       : data['name']        ?? 'Unknown',
+        'description': data['brand']       ?? '',
+        'foodId'     : (data['foodId'] ?? '').toString(),
+        'calories'   : (data['calories'] ?? '').toString(), // add if you need it
+        'unitId'     : unitIds,
+      });
+    } else {
+      print('Failed to fetch foodId $id: ${response.body}');
+    }
+  }
+
+  return foods;                                   // 👈 don’t forget this
+}
+
+    Future<List<Map<String, String>>> getFoodUnit() async {
     if (accessToken == null) return [];
-
-    final ids = await _loadCustomFoodIds();
-    List<Map<String, String>> foods = [];
-
-    for (final id in ids) {
+    List<Map<String, String>> foodUnit = [];
       final response = await http.get(
-        Uri.parse('https://api.fitbit.com/1/foods/$id.json'),
+        Uri.parse('https://api.fitbit.com/1/foods/units.json'),
         headers: {
           'Authorization': 'Bearer $accessToken',
         },
       );
-
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body)['food'];
-        foods.add({
-          'name': data['name'] ?? 'Unknown',
-          'description': data['description'] ?? '',
+        final data = jsonDecode(response.body);
+        for (var food in data) {
+           foodUnit.add({
+          'id': food['id']?.toString() ?? '',
+          'name': food['name'] ?? 'Unknow',
+          'plural': food['plural'] ?? '',
         });
+         
+        }
+        
       } else {
-        print("Failed to fetch foodId $id: ${response.body}");
+        print("Failed to fetch foodId ${response.body}");
       }
-    }
-
-    return foods;
+      print(foodUnit);
+    return foodUnit;
   }
-// Token persistence
+
+  // Token persistence
   Future<void> loadAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
     accessToken = prefs.getString('fitbitAccessToken');
@@ -530,7 +567,6 @@ Future<List<Activity>> fetchActivityLog(
     required String date,       // Add this parameter
   }) async {
     if (accessToken == null) return false;
-
     final response = await http.post(
       Uri.parse('https://api.fitbit.com/1/user/-/foods/log.json'),
       headers: {
@@ -548,6 +584,7 @@ Future<List<Activity>> fetchActivityLog(
 
     return response.statusCode == 201 || response.statusCode == 200;
   }
+  //get Food Unit
 
 
   Future<bool> createFoodGoal(int calories) async {
