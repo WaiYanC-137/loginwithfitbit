@@ -33,7 +33,7 @@ class _QuickLogPageState extends State<QuickLogPage> {
   String? _cachedAccessToken;
   late final List<int> _allowedUnitIds;
   late final Set<int> _allowedIdSet;
-  late bool   _mealLocked;  
+  String? _selectedSnackType; // Stores the selected sub-snack type
 
 
   @override
@@ -49,9 +49,8 @@ class _QuickLogPageState extends State<QuickLogPage> {
     _allowedIdSet = _allowedUnitIds.toSet();
     _fetchFoodUnit();
     _selectedMeal = widget.mealType.isNotEmpty == true
-      ? widget.mealType          // e.g. 'BREAKFAST'
+      ? widget.mealType         // e.g. 'BREAKFAST'
       : 'ANYTIME';    
-        _mealLocked  = widget.mealType.isNotEmpty == true;
        _fitbitService.loadAccessToken();
 
   }
@@ -93,29 +92,69 @@ class _QuickLogPageState extends State<QuickLogPage> {
     return success;
   }
 
-Widget _mealOption(String label) {
-  final bool disabled = _mealLocked;   // lock all radios once preset
-
-  return Expanded(
-    child: Opacity(                     // grey‑out if locked & not selected
-      opacity: disabled && label != _selectedMeal ? 0.4 : 1,
-      child: IgnorePointer(             // ignore taps when locked
-        ignoring: disabled,
-        child: Row(
-          children: [
-            Radio<String>(
-              value: label,
-              groupValue: _selectedMeal,
-              onChanged: (value) =>
-                  setState(() => _selectedMeal = value!), // only runs if unlocked
-            ),
-            Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
-          ],
+  // Helper method for main meal types (BREAKFAST, LUNCH, DINNER, SNACK)
+  Widget _mealOption(String label) {
+    String selectedMealType=_selectedMeal.toUpperCase(); // Removed `isMainMeal` as it's not used internally now
+    return SizedBox(
+      height: 50, // Fixed height for each radio row
+      child: Opacity(
+        opacity: label == selectedMealType ? 1 : 0.4,
+        child: IgnorePointer(
+          ignoring: label != selectedMealType,
+          child: Row(
+            children: [
+              Radio<String>(
+                value: label,
+                groupValue: selectedMealType,
+                onChanged: (value) {
+                  setState(() {
+                    selectedMealType = value!;
+                    if (value == 'SNACK') {
+                      _selectedSnackType = 'MORNING SNACK'; // Set default when SNACK is chosen
+                    } else {
+                      _selectedSnackType = null; // Clear snack type if not SNACK
+                    }
+                  });
+                },
+              ),
+              Expanded( // Expanded works fine INSIDE a Row with bounded width
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
+
+  // New helper method for snack sub-types (MORNING SNACK, AFTERNOON SNACK, EVENING SNACK)
+  Widget _buildSubSnackRadioRow(String label) {
+    return SizedBox(
+      height: 50, // Fixed height for each snack radio row
+          child: Row(
+            children: [
+              Radio<String>(
+                value: label,
+                groupValue: _selectedSnackType,
+                onChanged: (value) {
+                  setState(() {
+                    _selectedSnackType = value!;
+                  });
+                },
+              ),
+              Expanded( // Expanded works fine INSIDE a Row with bounded width
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+    );
+  }
   void _fetchFoodUnit() async {
     if (_cachedAccessToken == null) {
     await _fitbitService.loadAccessToken();
@@ -156,32 +195,44 @@ Widget _mealOption(String label) {
             const SizedBox(height: 10),
             const Divider(height: 20),
             const Text('Meal & Snacks Time', style: TextStyle(fontSize: 16)),
-            Wrap(
-              runSpacing: 8,
-              spacing: 8,
+             Column(
               children: [
-                _mealOption('ANYTIME'),
-                _mealOption('MORNING SNACK'),
+                // Main meal types - each returns a SizedBox with fixed height
                 _mealOption('BREAKFAST'),
-                _mealOption('AFTERNOON SNACK'),
                 _mealOption('LUNCH'),
-                _mealOption('EVENING SNACK'),
                 _mealOption('DINNER'),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                const Text('Day', style: TextStyle(fontSize: 16)),
-                const Spacer(),
-                Text(DateFormat('MMM d, yyyy').format(_selectedDate)),
-                IconButton(
-                  icon: const Icon(Icons.calendar_today),
-                  onPressed: _pickDate,
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
+              // Conditional rendering for Snack sub-types
+              if (_selectedMeal.toUpperCase() == 'SNACK')
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start, // Align sub-snack radio buttons
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0), // Add padding for text
+                                child: Text('Snack', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)), // Display 'Snack' as text
+                              ),
+                              _buildSubSnackRadioRow('MORNING SNACK'),
+                              _buildSubSnackRadioRow('AFTERNOON SNACK'),
+                              _buildSubSnackRadioRow('EVENING SNACK'),
+                            ],
+                          )
+                        else
+                          // If _selectedMeal is NOT 'SNACK', show the 'SNACK' radio option
+                          _mealOption('SNACK'),
+                      ],
+                    ),            
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        const Text('Day', style: TextStyle(fontSize: 16)),
+                        const Spacer(),
+                        Text(DateFormat('MMM d, yyyy').format(_selectedDate)),
+                        IconButton(
+                          icon: const Icon(Icons.calendar_today),
+                          onPressed: _pickDate,
+                        ),
+                      ],
+                    ),
+             const SizedBox(height: 30),
              Expanded(
                     child: DropdownButtonFormField<String>(
                       value: _servingUnitId,
@@ -237,6 +288,8 @@ Widget _mealOption(String label) {
                     onPressed: () async {
                       final success = await _logFood();
                       if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Logged, add more if needed')));
                         Navigator.pop(context, 'logged');
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
