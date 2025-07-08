@@ -88,16 +88,20 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
     setState(() {
       frequentFoods.clear();
       frequentFoods.addAll(foods.map((food) {
+        final unit = food['unit'];
+        final unitId = (unit != null && unit['id'] != null) ? unit['id'].toString() : '304';
         return {
           'name': food['name']?.toString() ?? '',
           'description': food['description']?.toString() ?? '',
           'calories': food['calories']?.toString() ?? '',
           'foodId': food['foodId']?.toString() ?? '',
-          'unitId': food['unit']['id']?.toString() ?? '',
+          'unitId': unitId,
         };
       }).toList());
     });
   }
+
+
 
   void _fetchRecentFoods() async {
     if (_cachedAccessToken == null) {
@@ -108,16 +112,20 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
     setState(() {
       recentFoods.clear();
       recentFoods.addAll(foods.map((food) {
+        final unit = food['unit'];
+        final unitId = (unit != null && unit['id'] != null) ? unit['id'].toString() : '304';
         return {
           'name': food['name']?.toString() ?? '',
           'description': food['description']?.toString() ?? '',
           'calories': food['calories']?.toString() ?? '',
           'foodId': food['foodId']?.toString() ?? '',
-          'unitId': food['unit']['id']?.toString() ?? '',
+          'unitId': unitId,
         };
       }).toList());
     });
   }
+
+
 
   void _searchFoods(String query) {
     if (_debounce?.isActive ?? false) _debounce?.cancel();
@@ -242,6 +250,8 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
   }
 
   void _handleFoodTap(Map<String, dynamic> food) async {
+    final safeUnitId = (food['unitId']?.isNotEmpty ?? false) ? food['unitId']! : '304';
+
     if (widget.isLogOnly) {
       final result = await Navigator.push(
         context,
@@ -251,7 +261,7 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
             foodName: food['name'] ?? '',
             calories: (food['calories'] ?? '0').toString(),
             foodId: food['foodId'] ?? '',
-            unitId: food['unitId'] ?? '304',
+            unitId: safeUnitId,
           ),
         ),
       );
@@ -269,7 +279,7 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
             prefillCalories: (food['calories'] ?? '0').toString(),
             isSearchFood: true,
             foodId: food['foodId'] ?? '',
-            unitId: food['unitId'] ?? '304',
+            unitId: safeUnitId,
             isQuickLog: true,
           ),
         ),
@@ -280,6 +290,7 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
       }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

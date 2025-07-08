@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:loginwithfitbit/services/fitbit_service.dart';
+import 'package:loginwithfitbit/ui/profile_page.dart'; // Adjust this import according to your file structure
 
 class FoodGoalPage extends StatefulWidget {
   const FoodGoalPage({super.key});
@@ -28,7 +29,12 @@ class _FoodGoalPageState extends State<FoodGoalPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Food goal set successfully')),
       );
-      Navigator.pop(context);
+      // Pop the current page (FoodGoalPage) and push ProfilePage to reload it
+      Navigator.pop(context);  // Pop the FoodGoalPage
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => ProfilePage(fitbitService: fitbitService)),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to set food goal')),
@@ -63,7 +69,7 @@ class _FoodGoalPageState extends State<FoodGoalPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Food'),
+        title: const Text('Food Goal'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,

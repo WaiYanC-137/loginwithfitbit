@@ -82,39 +82,16 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadProfile() async {
     try {
-      print("Loading profile...");
+      print("🔄 Loading profile...");
 
+      // Fetch user profile and food goal
       final profile = await widget.fitbitService.getProfile();
       final foodGoal = await widget.fitbitService.getFoodGoal();
-      final recentFoods = await widget.fitbitService.getRecentFoodLogs();
 
-      print("Profile: $profile");
-      print("Food Goal: $foodGoal");
-      print("Recent Foods: $recentFoods");
+      // ✅ Use correct API to get today's consumed calories
+      final totalCalories = await widget.fitbitService.getTodayCaloriesConsumed();
 
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-
-      int totalCalories = 0;
-
-      for (var food in recentFoods) {
-        // Some APIs return 'dateLastEaten' not 'date', confirm your JSON structure
-        final dateString = food['date'] ?? food['dateLastEaten'];
-
-        if (dateString == null) continue; // Skip if no date
-
-        try {
-          final foodDate = DateTime.parse(dateString);
-
-          if (foodDate.year == today.year && foodDate.month == today.month && foodDate.day == today.day) {
-            final cals = int.tryParse(food['calories']?.toString() ?? '0') ?? 0;
-            totalCalories += cals;
-          }
-        } catch (e) {
-          print("Skipping invalid date: $dateString");
-        }
-      }
-
+      // Update state
       setState(() {
         _profile = profile;
         _status = profile != null ? 'Profile loaded' : 'Failed to load profile';
@@ -122,35 +99,34 @@ class _ProfilePageState extends State<ProfilePage> {
         calorieGoal = foodGoal ?? 0;
         consumedCalories = totalCalories;
 
-        // Update healthData[0] safely
+        // Update healthData[0]
         healthData[0]['value'] = '$consumedCalories cal';
 
         if (calorieGoal! > 0) {
-          double percent = consumedCalories / calorieGoal!;
-          percent = percent.clamp(0, 1);
-
-          int remaining = calorieGoal! - consumedCalories;
+          final percent = (consumedCalories / calorieGoal!).clamp(0, 1);
+          final remaining = calorieGoal! - consumedCalories;
 
           healthData[0]['percent'] = percent;
           healthData[0]['subText'] = remaining > 0
               ? 'Today · $remaining cal remaining'
-              : 'Goal achieved!';
+              : 'Goal achieved! ✅';
 
-          print('✅ Consumed Calories Today: $consumedCalories');
-          print('✅ Food Goal: $calorieGoal');
-          print('✅ Remaining Calories: $remaining');
+          print('✅ Consumed: $consumedCalories cal');
+          print('🎯 Goal: $calorieGoal cal');
+          print('🟡 Remaining: $remaining cal');
         } else {
           healthData[0]['subText'] = 'Goal not set';
-          print('⚠️ Food Goal not set, cannot calculate remaining calories.');
+          print('⚠️ Food goal not set.');
         }
       });
     } catch (e) {
       setState(() {
-        _status = 'Error loading profile: $e';
+        _status = '❌ Error loading profile: $e';
       });
-      print('❌ Error loading profile: $e');
+      print('❌ Exception: $e');
     }
   }
+
 
 
 
@@ -516,7 +492,12 @@ class MealCard extends StatelessWidget {
                           mealType: title,
                         ),
                       ),
-                    );
+                    ).then((result) {
+                      if (result == 'logged') {
+                        final state = context.findAncestorStateOfType<_ProfilePageState>();
+                        state?._loadProfile();
+                      }
+                    });
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6C63FF),
@@ -541,8 +522,8 @@ class MealCard extends StatelessWidget {
       ),
     );
   }
-
 }
+
 
 class HealthCard extends StatelessWidget {
   final String title;

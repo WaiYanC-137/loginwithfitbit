@@ -563,10 +563,19 @@ class FitbitService {
     required String foodId,
     required String amount,
     required String unitId,
-    required String mealTypeId, // Add this parameter
-    required String date,       // Add this parameter
+    required String mealTypeId,
+    required String date,
   }) async {
     if (accessToken == null) return false;
+
+    // Debug output to trace values
+    print('Logging food with:');
+    print('  foodId: $foodId');
+    print('  amount: $amount');
+    print('  unitId: $unitId');
+    print('  mealTypeId: $mealTypeId');
+    print('  date: $date');
+
     final response = await http.post(
       Uri.parse('https://api.fitbit.com/1/user/-/foods/log.json'),
       headers: {
@@ -575,16 +584,18 @@ class FitbitService {
       },
       body: {
         'foodId': foodId,
-        'mealTypeId': mealTypeId, // Send the mealTypeId parameter
+        'mealTypeId': mealTypeId,
         'amount': amount,
         'unitId': unitId,
         'date': date,
       },
     );
 
+    print('Log food response: ${response.statusCode} - ${response.body}');
+
     return response.statusCode == 201 || response.statusCode == 200;
   }
-  //get Food Unit
+
 
 
   Future<bool> createFoodGoal(int calories) async {
@@ -628,5 +639,27 @@ class FitbitService {
     return null;
   }
 
+  Future<int> getTodayCaloriesConsumed() async {
+    if (accessToken == null) return 0;
+
+    final now = DateTime.now();
+    final today = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+
+    final response = await http.get(
+      Uri.parse('https://api.fitbit.com/1/user/-/foods/log/date/$today.json'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final summary = data['summary'];
+      return summary['calories'] ?? 0;
+    }
+
+    print('Failed to fetch today calories: ${response.body}');
+    return 0;
+  }
 
 }
