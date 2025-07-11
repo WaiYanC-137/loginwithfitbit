@@ -11,6 +11,7 @@ class StepTrackingPage extends StatefulWidget {
 
 class _StepTrackingPageState extends State<StepTrackingPage> {
   int _stepCount = 0;
+  int? _initialSteps;
   late Stream<StepCount> _stepCountStream;
 
   @override
@@ -37,9 +38,16 @@ class _StepTrackingPageState extends State<StepTrackingPage> {
 
     _stepCountStream.listen(
           (StepCount event) {
-        debugPrint("🦶 Steps updated: ${event.steps}");
+        debugPrint("📟 Raw Steps: ${event.steps}");
+
+        if (_initialSteps == null) {
+          _initialSteps = event.steps;
+          debugPrint("📍 Initial Step Set: $_initialSteps");
+        }
+
         setState(() {
-          _stepCount = event.steps;
+          _stepCount = event.steps - _initialSteps!;
+          debugPrint("✅ Displayed Steps: $_stepCount");
         });
       },
       onError: (error) {
@@ -48,6 +56,11 @@ class _StepTrackingPageState extends State<StepTrackingPage> {
       onDone: () => debugPrint('✅ Step Count stream closed'),
       cancelOnError: true,
     );
+  }
+
+  void _resetSteps() {
+    _initialSteps = null;
+    debugPrint("🔄 Step count reset.");
   }
 
   @override
@@ -68,15 +81,30 @@ class _StepTrackingPageState extends State<StepTrackingPage> {
               '$_stepCount',
               style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.stop),
-              label: const Text('Stop Tracking'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[100],
-                foregroundColor: Colors.black,
-              ),
+            const SizedBox(height: 30),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.stop),
+                  label: const Text('Stop Tracking'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red[100],
+                    foregroundColor: Colors.black,
+                  ),
+                ),
+                const SizedBox(width: 20),
+                ElevatedButton.icon(
+                  onPressed: _resetSteps,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Reset Steps'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[100],
+                    foregroundColor: Colors.black,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
