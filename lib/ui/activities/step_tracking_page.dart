@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:pedometer/pedometer.dart';
 
 class StepTrackingPage extends StatefulWidget {
@@ -15,13 +16,28 @@ class _StepTrackingPageState extends State<StepTrackingPage> {
   @override
   void initState() {
     super.initState();
-    _initPedometer();
+    _requestPermissionAndInit();
+  }
+
+  Future<void> _requestPermissionAndInit() async {
+    var status = await Permission.activityRecognition.status;
+    if (!status.isGranted) {
+      status = await Permission.activityRecognition.request();
+    }
+
+    if (status.isGranted) {
+      _initPedometer();
+    } else {
+      debugPrint('❌ Activity recognition permission not granted');
+    }
   }
 
   void _initPedometer() {
     _stepCountStream = Pedometer.stepCountStream;
+
     _stepCountStream.listen(
           (StepCount event) {
+        debugPrint("🦶 Steps updated: ${event.steps}");
         setState(() {
           _stepCount = event.steps;
         });
