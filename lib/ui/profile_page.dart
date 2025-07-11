@@ -27,7 +27,9 @@ class _ProfilePageState extends State<ProfilePage> {
   int _selectedIndex = 0;
   int? calorieGoal;
   int consumedCalories = 0;
-
+  final int completedDays = 0;
+  final int goalDays = 4;
+  final List<String> days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
   void _onItemTapped(int index) {
     if (index == 1) {
@@ -127,7 +129,6 @@ class _ProfilePageState extends State<ProfilePage> {
       print('❌ Exception: $e');
     }
   }
-
   Future<List<Activity>> _fetchActivityLog() async {
     DateTime now = DateTime.now();
     String onlyDate = DateFormat('yyyy-MM-dd').format(now);
@@ -265,28 +266,60 @@ class _ProfilePageState extends State<ProfilePage> {
             Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Card(
-            elevation: 3,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            child: ListTile(
-              leading: const Icon(Icons.star, size: 32, color: Color(0xFF6759FF)),
-              title: const Text('Weekly Goal',
-                  style:
-                      TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-              subtitle: const Text('You’ve completed 4 of 5 workouts'),
-              trailing: ElevatedButton(
-                onPressed: () => debugPrint('See details'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6C63FF),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: Colors.grey[100],
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Exercise days', style: TextStyle(fontSize: 16)),
+            SizedBox(height: 8),
+            RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: '$completedDays',
+                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black),
                   ),
-                ),
-                child: const Text('View'),
+                  TextSpan(
+                    text: ' of $goalDays',
+                    style: TextStyle(fontSize: 32, color: Colors.black),
+                  ),
+                ],
               ),
             ),
-          ),
+            SizedBox(height: 4),
+            Text('This week', style: TextStyle(color: Colors.grey[700])),
+            SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: days.map((day) {
+                return Column(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.teal[100],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      day,
+                      style: TextStyle(
+                        fontWeight: day == 'F' ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    )
+                  ],
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    ),
         ),
             const SizedBox(height: 16),
             ..._mealCards,

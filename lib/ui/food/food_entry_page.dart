@@ -250,6 +250,7 @@ class _FoodEntryPageState extends State<FoodEntryPage> with SingleTickerProvider
   }
 
   void _handleFoodTap(Map<String, dynamic> food) async {
+
     final safeUnitId = (food['unitId']?.isNotEmpty ?? false) ? food['unitId']! : '304';
 
     if (widget.isLogOnly) {

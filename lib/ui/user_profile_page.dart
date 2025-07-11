@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:loginwithfitbit/services/fitbit_service.dart';
+import 'package:loginwithfitbit/ui/activities/activity_goal_selection.dart';
 import 'package:loginwithfitbit/ui/food/food_goal_page.dart';
 
 class UserProfilePage extends StatefulWidget {
@@ -47,6 +48,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Widget _buildGoalCard(String title, String subtitle, IconData icon) {
     return GestureDetector(
       onTap: () {
+        if (title == 'Activity'){
+            Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ActivityGoalSelection()),
+          );        }
         if (title == 'Food') {
           Navigator.push(
             context,

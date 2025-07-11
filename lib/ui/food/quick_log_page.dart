@@ -39,12 +39,14 @@ class _QuickLogPageState extends State<QuickLogPage> {
   @override
   void initState() {
     super.initState();
+    print("Quick Log State....");
+    print(widget.unitId);
     _allowedUnitIds = widget.unitId
       .split(',')
       .where((s) => s.trim().isNotEmpty) // safety
       .map((s) => int.parse(s.trim()))
       .toList();
-
+  print(_allowedUnitIds);
   // If you’ll do a lot of “contains” checks, keep a Set as well:
     _allowedIdSet = _allowedUnitIds.toSet();
     _fetchFoodUnit();
@@ -270,7 +272,7 @@ class _QuickLogPageState extends State<QuickLogPage> {
                       final success = await _logFood();
                       if (success) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Logged, add more if needed')),
+                          const SnackBar(content: Text('Logged is successful...')),
                         );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
