@@ -6,7 +6,8 @@ import 'package:loginwithfitbit/ui/activities/activity_selection_type.dart';
 import 'package:loginwithfitbit/ui/add_entry_bottom_sheet.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../services/fitbit_service.dart';
-import 'activity_selection_page.dart';
+import 'package:loginwithfitbit/ui/food/food_log_list_page.dart';
+
 import 'dart:math' as math;
 import 'package:loginwithfitbit/ui/user_profile_page.dart';
 
@@ -126,20 +127,6 @@ class _ProfilePageState extends State<ProfilePage> {
       print('❌ Exception: $e');
     }
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   Future<List<Activity>> _fetchActivityLog() async {
     DateTime now = DateTime.now();
@@ -304,21 +291,39 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 16),
             ..._mealCards,
             const SizedBox(height: 16),
-            //add Card View Like Food
+              // ✅ View Food Logs Button
+
+
+              //add Card View Like Food
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: healthData.length,
                 itemBuilder: (context, index) {
                   final item = healthData[index];
-                  return HealthCard(
-                    title: item['title'],
-                    value: item['value'],
-                    subText: item['subText'],
-                    percent: item['percent'],
-                    icon: item['icon'],
-                    iconColor: item['iconColor'],
+                  return GestureDetector(
+                    onTap: () {
+                      if (item['title'] == 'Food') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const FoodLogListPage()),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('${item['title']} tapped! (Not implemented yet)')),
+                        );
+                      }
+                    },
+                    child: HealthCard(
+                      title: item['title'],
+                      value: item['value'],
+                      subText: item['subText'],
+                      percent: item['percent'],
+                      icon: item['icon'],
+                      iconColor: item['iconColor'],
+                    ),
                   );
+
                 },
               ),
 

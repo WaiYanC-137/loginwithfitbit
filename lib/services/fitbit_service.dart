@@ -662,4 +662,47 @@ class FitbitService {
     return 0;
   }
 
+  Future<List<Map<String, dynamic>>> getTodayFoodLogs() async {
+    if (accessToken == null) return [];
+
+    final now = DateTime.now();
+    final today = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+
+    final response = await http.get(
+      Uri.parse('https://api.fitbit.com/1/user/-/foods/log/date/$today.json'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final foods = data['foods'] ?? [];
+      return List<Map<String, dynamic>>.from(foods);
+    }
+
+    print('Failed to fetch today food logs: ${response.body}');
+    return [];
+  }
+  Future<void> deleteFoodLog(String logId) async {
+    await loadAccessToken(); // ensure token is loaded
+
+    if (accessToken == null) {
+      throw Exception('Access token is not available');
+    }
+
+    final response = await http.delete(
+      Uri.parse('https://api.fitbit.com/1/user/-/foods/log/$logId.json'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+      },
+    );
+
+    if (response.statusCode != 204) {
+      throw Exception('Failed to delete food log: ${response.body}');
+    }
+  }
+
+
+
 }
