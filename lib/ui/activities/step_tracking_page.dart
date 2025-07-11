@@ -58,11 +58,6 @@ class _StepTrackingPageState extends State<StepTrackingPage> {
     );
   }
 
-  void _resetSteps() {
-    _initialSteps = null;
-    debugPrint("🔄 Step count reset.");
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -82,29 +77,14 @@ class _StepTrackingPageState extends State<StepTrackingPage> {
               style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 30),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.stop),
-                  label: const Text('Stop Tracking'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red[100],
-                    foregroundColor: Colors.black,
-                  ),
-                ),
-                const SizedBox(width: 20),
-                ElevatedButton.icon(
-                  onPressed: _resetSteps,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Reset Steps'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[100],
-                    foregroundColor: Colors.black,
-                  ),
-                ),
-              ],
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.stop),
+              label: const Text('Stop Tracking'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red[100],
+                foregroundColor: Colors.black,
+              ),
             ),
           ],
         ),
