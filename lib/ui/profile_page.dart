@@ -7,6 +7,7 @@ import 'package:loginwithfitbit/ui/add_entry_bottom_sheet.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../services/fitbit_service.dart';
 import 'package:loginwithfitbit/ui/food/food_log_list_page.dart';
+import 'package:loginwithfitbit/ui/activities/exercise_stats_page.dart';
 
 import 'dart:math' as math;
 import 'package:loginwithfitbit/ui/user_profile_page.dart';
@@ -269,57 +270,73 @@ class _ProfilePageState extends State<ProfilePage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       color: Colors.grey[100],
       child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Exercise days', style: TextStyle(fontSize: 16)),
-            SizedBox(height: 8),
-            RichText(
-              text: TextSpan(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ExerciseStatsPage()),
+            );
+          },
+          child: Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            color: Colors.grey[100],
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextSpan(
-                    text: '$completedDays',
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black),
+                  Text('Exercise days', style: TextStyle(fontSize: 16)),
+                  const SizedBox(height: 8),
+                  RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '$completedDays',
+                          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black),
+                        ),
+                        TextSpan(
+                          text: ' of $goalDays',
+                          style: const TextStyle(fontSize: 32, color: Colors.black),
+                        ),
+                      ],
+                    ),
                   ),
-                  TextSpan(
-                    text: ' of $goalDays',
-                    style: TextStyle(fontSize: 32, color: Colors.black),
+                  const SizedBox(height: 4),
+                  Text('This week', style: TextStyle(color: Colors.grey[700])),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: days.map((day) {
+                      return Column(
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: Colors.teal[100],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            day,
+                            style: TextStyle(
+                              fontWeight: day == 'F' ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          )
+                        ],
+                      );
+                    }).toList(),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 4),
-            Text('This week', style: TextStyle(color: Colors.grey[700])),
-            SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: days.map((day) {
-                return Column(
-                  children: [
-                    Container(
-                      width: 28,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.teal[100],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      day,
-                      style: TextStyle(
-                        fontWeight: day == 'F' ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    )
-                  ],
-                );
-              }).toList(),
-            ),
-          ],
+          ),
         ),
       ),
-    ),
+
+          ),
         ),
             const SizedBox(height: 16),
             ..._mealCards,
