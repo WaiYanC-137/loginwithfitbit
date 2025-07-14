@@ -8,6 +8,7 @@ import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../services/fitbit_service.dart';
 import 'package:loginwithfitbit/ui/food/food_log_list_page.dart';
 import 'package:loginwithfitbit/ui/activities/exercise_stats_page.dart';
+import 'package:loginwithfitbit/ui/water/water_tracker_page.dart';
 
 import 'dart:math' as math;
 import 'package:loginwithfitbit/ui/user_profile_page.dart';
@@ -358,12 +359,18 @@ class _ProfilePageState extends State<ProfilePage> {
                           context,
                           MaterialPageRoute(builder: (context) => const FoodLogListPage()),
                         );
+                      } else if (item['title'] == 'Water') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => WaterTrackerPage()),
+                        );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('${item['title']} tapped! (Not implemented yet)')),
                         );
                       }
-                    },
+                    }
+                    ,
                     child: HealthCard(
                       title: item['title'],
                       value: item['value'],
